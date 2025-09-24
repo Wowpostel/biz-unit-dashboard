@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  nas-auth-app:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - ./public:/app/public
+      - /volume1/docker/nas-auth-app:/app/ssl
+      - /volume1/share_folder:/nas
+    environment:
+      - NAS_FOLDER=/nas
+      - SSL_KEY_PATH=/app/ssl/privkey.pem
+      - SSL_CERT_PATH=/app/ssl/cert.pem
+    restart: unless-stopped
