@@ -1,25 +1,15 @@
-require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
-const app = express();
 const { sequelize } = require('./src/models');
+const authRoutes = require('./src/routes/auth');
+require('dotenv').config();
 
-app.use(cors());
+const app = express();
 app.use(express.json());
 
-// Роуты
-app.use('/api/auth', require('./src/routes/auth'));
-app.use('/api/users', require('./src/routes/users'));
-app.use('/api/business-units', require('./src/routes/businessUnits'));
+app.use('/api/auth', authRoutes);
 
 const PORT = process.env.PORT || 5000;
-
 app.listen(PORT, async () => {
-  console.log(`Server running on port ${PORT}`);
-  try {
-    await sequelize.sync({ alter: true });
-    console.log('Database synced');
-  } catch (err) {
-    console.error('Database sync error:', err);
-  }
+  await sequelize.authenticate();
+  console.log(`🚀 Server running on port ${PORT}`);
 });

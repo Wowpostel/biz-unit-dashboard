@@ -1,15 +1,19 @@
-const bcrypt = require('bcrypt');
+const { DataTypes } = require('sequelize');
 
-module.exports = (sequelize, DataTypes) => {
-  const User = sequelize.define('User', {
-    username: { type: DataTypes.STRING, unique: true },
-    password: DataTypes.STRING,
-    role: { type: DataTypes.ENUM('admin', 'owner', 'viewer'), defaultValue: 'viewer' }
+module.exports = (sequelize) => {
+  return sequelize.define('User', {
+    username: {
+      type: DataTypes.STRING,
+      unique: true,
+      allowNull: false,
+    },
+    password: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    role: {
+      type: DataTypes.STRING,
+      defaultValue: 'user',
+    },
   });
-
-  User.beforeCreate(async (user) => {
-    user.password = await bcrypt.hash(user.password, 10);
-  });
-
-  return User;
 };

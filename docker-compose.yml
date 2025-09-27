@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   backend:
     build: ./backend
@@ -7,7 +9,6 @@ services:
       - ./backend/.env
     depends_on:
       - db
-    restart: always
 
   db:
     image: postgres:15
@@ -19,5 +20,6 @@ services:
       - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
+
 volumes:
   pgdata:
