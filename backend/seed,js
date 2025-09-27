@@ -1,21 +1,9 @@
-const { sequelize, User } = require('./src/models');
+const { sequelize, User } = require('./models/User');
 const bcrypt = require('bcrypt');
 
 (async () => {
-  try {
-    await sequelize.sync({ force: true });
-
-    const hashedPassword = await bcrypt.hash('admin', 10);
-    await User.create({
-      username: 'admin',
-      password: hashedPassword,
-      role: 'admin',
-    });
-
-    console.log('✅ Admin user created');
-    process.exit(0);
-  } catch (err) {
-    console.error('❌ Error seeding:', err);
-    process.exit(1);
-  }
+  await sequelize.sync({ force: true });
+  const hashed = await bcrypt.hash('admin', 10);
+  await User.create({ username: 'admin', password: hashed, role: 'admin' });
+  console.log('✅ Admin user created');
 })();
