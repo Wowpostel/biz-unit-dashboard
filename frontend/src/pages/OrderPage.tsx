@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../api';
+import { useAuth } from '../auth';
 
 type WorkItem = {
   id: string;
@@ -45,6 +46,8 @@ const statusRu: Record<string, string> = {
 
 export default function OrderPage() {
   const { id } = useParams();
+  const { user } = useAuth();
+  const canLaunch = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
   const [order, setOrder] = useState<Order | null>(null);
   const [specId, setSpecId] = useState('');
   const [qty, setQty] = useState(1);
@@ -112,6 +115,7 @@ export default function OrderPage() {
         </ul>
       </div>
 
+      {canLaunch && (
       <div className="card">
         <h3>Запуск в работу</h3>
         <p className="muted">
@@ -149,6 +153,7 @@ export default function OrderPage() {
         </form>
         {error && <p className="err">{error}</p>}
       </div>
+      )}
 
       <div className="card">
         <h3>Запуски</h3>

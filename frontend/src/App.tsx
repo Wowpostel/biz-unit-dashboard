@@ -15,6 +15,14 @@ import OrderPage from './pages/OrderPage';
 import PrintQrPage from './pages/PrintQrPage';
 import KioskPage from './pages/KioskPage';
 
+function OfficeHome() {
+  const { user } = useAuth();
+  if (user?.role === 'TECHNOLOGIST') {
+    return <Navigate to="/office/specs" replace />;
+  }
+  return <DashboardPage />;
+}
+
 function Gate({ office }: { office?: boolean }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="boot">Загрузка…</div>;
@@ -41,7 +49,7 @@ export default function App() {
       />
       <Route path="/kiosk" element={<Gate />} />
       <Route path="/office" element={<Gate office />}>
-        <Route index element={<DashboardPage />} />
+        <Route index element={<OfficeHome />} />
         <Route path="posts" element={<PostsPage />} />
         <Route path="employees" element={<EmployeesPage />} />
         <Route path="users" element={<UsersPage />} />

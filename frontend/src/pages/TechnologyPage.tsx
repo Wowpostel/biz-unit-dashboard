@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../api';
+import { useAuth } from '../auth';
 
 type Post = { id: string; name: string };
 type OpType = { id: string; name: string };
@@ -26,6 +27,8 @@ type Item = {
 
 export default function TechnologyPage() {
   const { id } = useParams();
+  const { user } = useAuth();
+  const canEdit = user?.role === 'ADMIN' || user?.role === 'TECHNOLOGIST';
   const [items, setItems] = useState<Item[]>([]);
   const [code, setCode] = useState('');
   const [posts, setPosts] = useState<Post[]>([]);
@@ -123,9 +126,11 @@ export default function TechnologyPage() {
             <Link to={`/office/specs/${id}`}>← состав</Link>
           </p>
         </div>
-        <button className="btn amber" onClick={save} disabled={!sel}>
-          Сохранить операции
-        </button>
+        {canEdit && (
+          <button className="btn amber" onClick={save} disabled={!sel}>
+            Сохранить операции
+          </button>
+        )}
       </div>
       {error && <p className="err">{error}</p>}
       {saved && <p className="muted">{saved}</p>}
@@ -154,9 +159,11 @@ export default function TechnologyPage() {
           <h3>
             {current ? `${current.designation} ${current.name}` : 'Выберите позицию'}
           </h3>
+          {canEdit && (
           <button className="btn" type="button" onClick={addOp} disabled={!sel}>
             + Операция
           </button>
+          )}
           {ops.map((o) => (
             <div key={o.id} className="card" style={{ marginTop: 12 }}>
               <div className="form-row">

@@ -194,7 +194,17 @@ table.data tr.ok { background: #e7f4ea; }
 .kiosk .panel { background: #152033; border: 1px solid #2c3f5c; padding: 20px; margin-top: 16px; }
 .kiosk .warn { background: #3a2418; border-color: #8a4b22; }
 .tech-img { max-width: 100%; max-height: 280px; margin: 8px 8px 0 0; border: 1px solid #3a4d6a; }
-.hours-row { display: flex; gap: 12px; margin-top: 16px; align-items: center; }
+.kiosk .btn.ghost {
+  color: #f3eee5;
+  border-color: #5a6d88;
+  background: #1a273a;
+}
+.kiosk .btn {
+  background: #1d4e89;
+  color: #fff;
+}
+.kiosk .hours-row .btn.amber { background: var(--amber); color: #1a1308; }
+.hours-row { display: flex; gap: 12px; margin-top: 16px; align-items: center; flex-wrap: wrap; }
 .hours-row input { width: 140px; font-size: 22px; padding: 10px; }
 
 .print-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }

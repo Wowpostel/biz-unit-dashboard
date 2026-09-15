@@ -1,6 +1,7 @@
 import { KeyboardEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../api';
+import { useAuth } from '../auth';
 
 type Kind = 'ASSEMBLY' | 'PART' | 'MATERIAL';
 
@@ -35,6 +36,8 @@ function levelOf(rows: Row[], row: Row): number {
 
 export default function SpecEditorPage() {
   const { id } = useParams();
+  const { user } = useAuth();
+  const canEdit = user?.role === 'ADMIN' || user?.role === 'TECHNOLOGIST';
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [rows, setRows] = useState<Row[]>([]);
@@ -192,14 +195,17 @@ export default function SpecEditorPage() {
             <Link to={`/office/specs/${id}/tech`}>Технология →</Link>
           </p>
         </div>
-        <button className="btn amber" onClick={save}>
-          Сохранить
-        </button>
+        {canEdit && (
+          <button className="btn amber" onClick={save}>
+            Сохранить
+          </button>
+        )}
       </div>
       <div className="form-row">
-        <input value={code} onChange={(e) => setCode(e.target.value)} />
-        <input value={name} onChange={(e) => setName(e.target.value)} style={{ minWidth: 280 }} />
+        <input value={code} onChange={(e) => setCode(e.target.value)} readOnly={!canEdit} />
+        <input value={name} onChange={(e) => setName(e.target.value)} style={{ minWidth: 280 }} readOnly={!canEdit} />
       </div>
+      {canEdit && (
       <div className="form-row">
         <button className="btn" type="button" onClick={() => addRow(null)}>
           + Строка
@@ -221,6 +227,7 @@ export default function SpecEditorPage() {
           Удалить
         </button>
       </div>
+      )}
       {error && <p className="err">{error}</p>}
       {saved && <p className="muted">{saved}</p>}
       <table className="data">
@@ -244,12 +251,12 @@ export default function SpecEditorPage() {
                 style={{ outline: sel === r.clientId ? '2px solid var(--amber)' : undefined }}
               >
                 <td>{lvl + 1}</td>
-                <td>
-                  <span className="tree-pad" style={{ paddingLeft: lvl * 18 }} />
+                <td style={{ paddingLeft: 8 + lvl * 18 }}>
                   <input
                     value={r.designation}
                     onChange={(e) => patch(r.clientId, { designation: e.target.value })}
                     onKeyDown={(e) => onKey(e, r)}
+                    readOnly={!canEdit}
                   />
                 </td>
                 <td>
