@@ -13,6 +13,7 @@ type OpDraft = {
   operationTypeId: string | null;
   postId: string | null;
   timeNormHours: number;
+  minText: string;
   instruction: string;
 };
 
@@ -50,10 +51,11 @@ const sourceRu: Record<TechSource, string> = {
   empty: 'пусто',
 };
 
-function minutesOf(hours: number) {
+function minTextFromHours(hours: number) {
   if (!hours) return '';
-  const m = Math.round(hours * 60 * 100) / 100;
-  return String(m);
+  const m = hours * 60;
+  const rounded = Math.round(m * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded);
 }
 
 function hoursOf(minText: string) {
@@ -107,6 +109,7 @@ function toRow(it: {
     operationTypeId: o.operationTypeId,
     postId: o.postId,
     timeNormHours: o.timeNormHours,
+    minText: minTextFromHours(o.timeNormHours),
     instruction: o.instruction ?? '',
   }));
   return {
@@ -241,6 +244,7 @@ export default function SpecEditorPage() {
           operationTypeId: o.operationTypeId,
           postId: o.postId,
           timeNormHours: o.timeNormHours,
+          minText: minTextFromHours(o.timeNormHours),
           instruction: o.instruction ?? '',
         }));
         return {
@@ -360,6 +364,7 @@ export default function SpecEditorPage() {
       operationTypeId: t.id,
       postId: t.defaultPostId,
       timeNormHours: 0,
+      minText: '',
       instruction: '',
     }));
     setRows((rs) =>
@@ -371,7 +376,7 @@ export default function SpecEditorPage() {
 
   function setOpMinutes(row: Row, index: number, minText: string) {
     const ops = row.operations.map((o, i) =>
-      i === index ? { ...o, timeNormHours: hoursOf(minText) } : o,
+      i === index ? { ...o, minText, timeNormHours: hoursOf(minText) } : o,
     );
     patch(row.clientId, { operations: ops, techSource: row.techSource === 'catalog' ? 'own' : row.techSource });
   }
@@ -406,7 +411,7 @@ export default function SpecEditorPage() {
                     name: o.name,
                     operationTypeId: o.operationTypeId,
                     postId: o.postId,
-                    timeNormHours: Number(o.timeNormHours) || 0,
+                    timeNormHours: hoursOf(o.minText),
                     instruction: o.instruction,
                   })),
           })),
@@ -635,7 +640,7 @@ export default function SpecEditorPage() {
                         <input
                           key={o.seq + o.name + i}
                           title={`${o.name}, мин`}
-                          value={minutesOf(o.timeNormHours)}
+                          value={o.minText}
                           onChange={(e) => setOpMinutes(r, i, e.target.value)}
                           readOnly={!canEdit}
                         />
