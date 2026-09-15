@@ -1,43 +1,46 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth';
 
-const LoginPage: React.FC = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const navigate = useNavigate();
+export default function LoginPage() {
+  const { login } = useAuth();
+  const nav = useNavigate();
+  const [email, setEmail] = useState('disp@erpevv.local');
+  const [password, setPassword] = useState('Disp123!');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const handleLogin = async () => {
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/login', {
-        username,
-        password,
-      });
-      localStorage.setItem('token', res.data.token);
-      navigate('/dashboard');
+      const user = await login(email, password);
+      nav(user.role === 'OPERATOR' ? '/kiosk' : '/office', { replace: true });
     } catch (err) {
-      alert('Ошибка входа');
+      setError(err instanceof Error ? err.message : 'Ошибка входа');
+    } finally {
+      setBusy(false);
     }
-  };
+  }
 
   return (
-    <div style={{ padding: '2rem' }}>
-      <h2>Вход</h2>
-      <input
-        type="text"
-        placeholder="Имя пользователя"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-      /><br /><br />
-      <input
-        type="password"
-        placeholder="Пароль"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      /><br /><br />
-      <button onClick={handleLogin}>Войти</button>
+    <div className="login-wrap">
+      <form className="login-card" onSubmit={onSubmit}>
+        <h1>ERPEVV</h1>
+        <p>Цеховой контур. Войдите по своей учётке — роль откроет офис или терминал.</p>
+        <label>Почта</label>
+        <input value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" />
+        <label>Пароль</label>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
+        />
+        <button disabled={busy}>{busy ? 'Входим…' : 'Войти'}</button>
+        {error && <div className="err">{error}</div>}
+      </form>
     </div>
   );
-};
-
-export default LoginPage;
+}
