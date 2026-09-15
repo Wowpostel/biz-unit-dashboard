@@ -1,4 +1,4 @@
-import { IsBoolean, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class CreatePostDto {
   @IsString()
@@ -28,6 +28,11 @@ export class PatchPostDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  equipmentIds?: string[];
 }
 
 export class CreateOperationTypeDto {
@@ -36,4 +41,46 @@ export class CreateOperationTypeDto {
 
   @IsString()
   name!: string;
+
+  @IsOptional()
+  @IsString()
+  defaultPostId?: string | null;
+}
+
+export class CreateEquipmentDto {
+  @IsString()
+  code!: string;
+
+  @IsString()
+  name!: string;
+
+  @IsOptional()
+  @IsString()
+  inventoryNo?: string;
+
+  @IsOptional()
+  @IsString()
+  postId?: string | null;
+}
+
+export class PatchEquipmentDto {
+  @IsOptional()
+  @IsString()
+  code?: string;
+
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  inventoryNo?: string;
+
+  @IsOptional()
+  @IsString()
+  postId?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }

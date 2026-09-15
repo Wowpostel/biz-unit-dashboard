@@ -21,6 +21,7 @@ export default function OfficeLayout() {
           {disp && <NavLink to="/office/orders">Заказы</NavLink>}
           <NavLink to="/office/specs">Спецификации</NavLink>
           {tech && <NavLink to="/office/posts">Посты</NavLink>}
+          {tech && <NavLink to="/office/equipment">Оборудование</NavLink>}
           {tech && <NavLink to="/office/employees">Сотрудники</NavLink>}
           {tech && <NavLink to="/office/operation-types">Виды операций</NavLink>}
           {admin && <NavLink to="/office/users">Пользователи</NavLink>}

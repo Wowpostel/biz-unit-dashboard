@@ -18,10 +18,50 @@ function qr() {
 
 const prisma = new PrismaClient();
 
+async function ensureEquipment(
+  tenantId: string,
+  posts: { tok: { id: string }; frez: { id: string }; sbor: { id: string } },
+) {
+  const count = await prisma.equipment.count({ where: { tenantId } });
+  if (count > 0) return;
+  await prisma.equipment.createMany({
+    data: [
+      { tenantId, code: '16К20-1', name: 'Токарный 16К20 №1', inventoryNo: 'ИН-101', postId: posts.tok.id },
+      { tenantId, code: '16К20-2', name: 'Токарный 16К20 №2', inventoryNo: 'ИН-102', postId: posts.tok.id },
+      { tenantId, code: '1К62-1', name: 'Токарный 1К62', inventoryNo: 'ИН-103', postId: posts.tok.id },
+      { tenantId, code: '6Р13-1', name: 'Фрезерный 6Р13 №1', inventoryNo: 'ИН-201', postId: posts.frez.id },
+      { tenantId, code: '6Р13-2', name: 'Фрезерный 6Р13 №2', inventoryNo: 'ИН-202', postId: posts.frez.id },
+      { tenantId, code: 'СБОР-1', name: 'Сборочный стол №1', inventoryNo: 'ИН-301', postId: posts.sbor.id },
+      { tenantId, code: 'СБОР-2', name: 'Сборочный стол №2', inventoryNo: 'ИН-302', postId: posts.sbor.id },
+    ],
+  });
+}
+
 async function main() {
   const existing = await prisma.tenant.findUnique({ where: { code: 'pilot' } });
   if (existing) {
-    console.log('Пилот уже заполнен, пропускаем seed.');
+    const posts = await prisma.post.findMany({ where: { tenantId: existing.id } });
+    const byCode = Object.fromEntries(posts.map((p) => [p.code, p]));
+    if (byCode['ТОКАР'] && byCode['ФРЕЗ'] && byCode['СБОР']) {
+      await ensureEquipment(existing.id, {
+        tok: byCode['ТОКАР'],
+        frez: byCode['ФРЕЗ'],
+        sbor: byCode['СБОР'],
+      });
+      await prisma.operationType.updateMany({
+        where: { tenantId: existing.id, code: 'ТОК' },
+        data: { defaultPostId: byCode['ТОКАР'].id },
+      });
+      await prisma.operationType.updateMany({
+        where: { tenantId: existing.id, code: 'ФРЗ' },
+        data: { defaultPostId: byCode['ФРЕЗ'].id },
+      });
+      await prisma.operationType.updateMany({
+        where: { tenantId: existing.id, code: { in: ['СБР', 'КТР'] } },
+        data: { defaultPostId: byCode['СБОР'].id },
+      });
+    }
+    console.log('Пилот уже заполнен, дописали оборудование при необходимости.');
     return;
   }
 
@@ -58,18 +98,20 @@ async function main() {
 
   const types = {
     tok: await prisma.operationType.create({
-      data: { tenantId: tenant.id, code: 'ТОК', name: 'Токарная' },
+      data: { tenantId: tenant.id, code: 'ТОК', name: 'Токарная', defaultPostId: posts.tok.id },
     }),
     frez: await prisma.operationType.create({
-      data: { tenantId: tenant.id, code: 'ФРЗ', name: 'Фрезерная' },
+      data: { tenantId: tenant.id, code: 'ФРЗ', name: 'Фрезерная', defaultPostId: posts.frez.id },
     }),
     sbor: await prisma.operationType.create({
-      data: { tenantId: tenant.id, code: 'СБР', name: 'Сборка' },
+      data: { tenantId: tenant.id, code: 'СБР', name: 'Сборка', defaultPostId: posts.sbor.id },
     }),
     ctrl: await prisma.operationType.create({
-      data: { tenantId: tenant.id, code: 'КТР', name: 'Контроль' },
+      data: { tenantId: tenant.id, code: 'КТР', name: 'Контроль', defaultPostId: posts.sbor.id },
     }),
   };
+
+  await ensureEquipment(tenant.id, posts);
 
   const ivanov = await prisma.employee.create({
     data: {

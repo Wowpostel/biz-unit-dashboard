@@ -4,7 +4,13 @@ import { Roles } from '../auth/roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AuthUser } from '../auth/auth-user';
 import { ShopService } from './shop.service';
-import { CreateOperationTypeDto, CreatePostDto, PatchPostDto } from './dto';
+import {
+  CreateEquipmentDto,
+  CreateOperationTypeDto,
+  CreatePostDto,
+  PatchEquipmentDto,
+  PatchPostDto,
+} from './dto';
 
 @Controller()
 export class ShopController {
@@ -30,6 +36,28 @@ export class ShopController {
     @Body() dto: PatchPostDto,
   ) {
     return this.shop.patchPost(user.tenantId, id, dto);
+  }
+
+  @Roles(Role.ADMIN, Role.TECHNOLOGIST, Role.DISPATCHER, Role.OPERATOR)
+  @Get('equipment')
+  listEquipment(@CurrentUser() user: AuthUser) {
+    return this.shop.listEquipment(user.tenantId);
+  }
+
+  @Roles(Role.ADMIN, Role.TECHNOLOGIST)
+  @Post('equipment')
+  createEquipment(@CurrentUser() user: AuthUser, @Body() dto: CreateEquipmentDto) {
+    return this.shop.createEquipment(user.tenantId, dto);
+  }
+
+  @Roles(Role.ADMIN, Role.TECHNOLOGIST)
+  @Patch('equipment/:id')
+  patchEquipment(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: PatchEquipmentDto,
+  ) {
+    return this.shop.patchEquipment(user.tenantId, id, dto);
   }
 
   @Roles(Role.ADMIN, Role.TECHNOLOGIST, Role.DISPATCHER)

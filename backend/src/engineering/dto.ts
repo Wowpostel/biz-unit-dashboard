@@ -51,6 +51,12 @@ export class SpecItemInputDto {
 
   @IsEnum(SpecItemKind)
   kind!: SpecItemKind;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TechOperationInputDto)
+  operations?: TechOperationInputDto[];
 }
 
 export class SaveSpecItemsDto {
@@ -92,4 +98,10 @@ export class SaveTechOperationsDto {
   @ValidateNested({ each: true })
   @Type(() => TechOperationInputDto)
   operations!: TechOperationInputDto[];
+}
+
+export class LookupPartsDto {
+  @IsArray()
+  @IsString({ each: true })
+  keys!: string[];
 }

@@ -23,7 +23,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { AuthUser } from '../auth/auth-user';
 import { Public } from '../auth/public.decorator';
 import { EngineeringService } from './engineering.service';
-import { CreateSpecDto, SaveSpecItemsDto, SaveTechOperationsDto } from './dto';
+import { CreateSpecDto, LookupPartsDto, SaveSpecItemsDto, SaveTechOperationsDto } from './dto';
 
 function uploadDir() {
   const dir = join(process.env.UPLOAD_DIR ?? './uploads', 'tech');
@@ -61,6 +61,12 @@ export class EngineeringController {
     @Body() dto: CreateSpecDto,
   ) {
     return this.engineering.patchSpec(user.tenantId, id, dto);
+  }
+
+  @Roles(Role.ADMIN, Role.TECHNOLOGIST)
+  @Post('parts/lookup')
+  lookup(@CurrentUser() user: AuthUser, @Body() dto: LookupPartsDto) {
+    return this.engineering.lookupParts(user.tenantId, dto);
   }
 
   @Roles(Role.ADMIN, Role.TECHNOLOGIST)

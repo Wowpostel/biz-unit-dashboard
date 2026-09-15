@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage';
 import OfficeLayout from './pages/OfficeLayout';
 import DashboardPage from './pages/DashboardPage';
 import PostsPage from './pages/PostsPage';
+import EquipmentPage from './pages/EquipmentPage';
 import EmployeesPage from './pages/EmployeesPage';
 import UsersPage from './pages/UsersPage';
 import OperationTypesPage from './pages/OperationTypesPage';
@@ -51,6 +52,7 @@ export default function App() {
       <Route path="/office" element={<Gate office />}>
         <Route index element={<OfficeHome />} />
         <Route path="posts" element={<PostsPage />} />
+        <Route path="equipment" element={<EquipmentPage />} />
         <Route path="employees" element={<EmployeesPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="operation-types" element={<OperationTypesPage />} />

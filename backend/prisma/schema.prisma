@@ -53,6 +53,7 @@ model Tenant {
   users          User[]
   employees      Employee[]
   posts          Post[]
+  equipment      Equipment[]
   operationTypes OperationType[]
   specs          Spec[]
   specItems      SpecItem[]
@@ -99,11 +100,30 @@ model Post {
   updatedAt   DateTime @updatedAt
 
   employees      Employee[]
+  equipment      Equipment[]
+  operationTypes OperationType[]
   techOperations TechOperation[]
   workOperations WorkOperation[]
   timeEntries    TimeEntry[]
 
   @@unique([tenantId, code])
+}
+
+model Equipment {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  code        String
+  name        String
+  inventoryNo String   @default("")
+  postId      String?
+  post        Post?    @relation(fields: [postId], references: [id])
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([postId])
 }
 
 model Employee {
@@ -123,13 +143,15 @@ model Employee {
 }
 
 model OperationType {
-  id        String   @id @default(cuid())
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  code      String
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  code          String
+  name          String
+  defaultPostId String?
+  defaultPost   Post?    @relation(fields: [defaultPostId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   techOperations TechOperation[]
 
@@ -175,6 +197,7 @@ model SpecItem {
   workItems  WorkItem[]
 
   @@index([specId, parentId])
+  @@index([tenantId, designation])
 }
 
 model TechOperation {

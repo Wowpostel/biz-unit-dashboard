@@ -8,8 +8,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { num } from '../common/util';
 import {
   CreateSpecDto,
+  LookupPartsDto,
   SaveSpecItemsDto,
   SaveTechOperationsDto,
+  TechOperationInputDto,
 } from './dto';
 
 @Injectable()
@@ -160,7 +162,78 @@ export class EngineeringService {
       where: { specId, tenantId, id: { notIn: keepIds } },
     });
 
+    for (const item of dto.items) {
+      const realId = clientToId.get(item.clientId);
+      if (!realId || item.kind === SpecItemKind.MATERIAL) continue;
+      if (item.operations) {
+        await this.persistOperations(tenantId, realId, item.operations);
+      }
+    }
+
     return this.getSpec(tenantId, specId);
+  }
+
+  async lookupParts(tenantId: string, dto: LookupPartsDto) {
+    const keys = [...new Set(dto.keys.map((k) => k.trim()).filter(Boolean))];
+    const result: Record<
+      string,
+      {
+        designation: string;
+        name: string;
+        operations: {
+          seq: number;
+          name: string;
+          operationTypeId: string | null;
+          postId: string | null;
+          timeNormHours: number;
+          instruction: string;
+        }[];
+      } | null
+    > = {};
+    for (const key of keys) result[key] = null;
+    if (!keys.length) return result;
+
+    const items = await this.prisma.specItem.findMany({
+      where: {
+        tenantId,
+        kind: { not: SpecItemKind.MATERIAL },
+        OR: keys.flatMap((key) => [
+          { designation: { equals: key, mode: 'insensitive' } },
+          { name: { equals: key, mode: 'insensitive' } },
+        ]),
+      },
+      include: {
+        operations: { orderBy: { seq: 'asc' } },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    for (const key of keys) {
+      const lower = key.toLowerCase();
+      const withTech = items.filter(
+        (i) =>
+          i.operations.length > 0 &&
+          (i.designation.toLowerCase() === lower || i.name.toLowerCase() === lower),
+      );
+      const any = items.filter(
+        (i) => i.designation.toLowerCase() === lower || i.name.toLowerCase() === lower,
+      );
+      const pick = withTech[0] ?? any[0];
+      if (!pick) continue;
+      result[key] = {
+        designation: pick.designation,
+        name: pick.name,
+        operations: pick.operations.map((op) => ({
+          seq: op.seq,
+          name: op.name,
+          operationTypeId: op.operationTypeId,
+          postId: op.postId,
+          timeNormHours: num(op.timeNormHours),
+          instruction: op.instruction,
+        })),
+      };
+    }
+    return result;
   }
 
   async saveOperations(
@@ -175,15 +248,23 @@ export class EngineeringService {
     if (item.kind === SpecItemKind.MATERIAL) {
       throw new BadRequestException('На материал технологию не задают');
     }
+    await this.persistOperations(tenantId, specItemId, dto.operations);
+    return this.getSpec(tenantId, item.specId);
+  }
 
+  private async persistOperations(
+    tenantId: string,
+    specItemId: string,
+    operations: TechOperationInputDto[],
+  ) {
     const existing = await this.prisma.techOperation.findMany({
       where: { specItemId, tenantId },
     });
     const keep = new Set(
-      dto.operations.map((o) => o.id).filter((id): id is string => !!id && !id.startsWith('tmp-')),
+      operations.map((o) => o.id).filter((id): id is string => !!id && !id.startsWith('tmp-')),
     );
 
-    for (const op of dto.operations) {
+    for (const op of operations) {
       const data = {
         seq: op.seq,
         name: op.name.trim(),
@@ -211,8 +292,6 @@ export class EngineeringService {
         where: { id: { in: toDelete.map((o) => o.id) } },
       });
     }
-
-    return this.getSpec(tenantId, item.specId);
   }
 
   async addImage(
