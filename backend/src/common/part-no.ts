@@ -1,5 +1,7 @@
 import { extname } from 'path';
 
+export const DEFAULT_PHOTO_BASE_URL = 'https://starksk1.synology.me/web_images/images';
+
 export function normalizePartNo(raw: string): string {
   return raw.trim().replace(/\s+/g, '').toUpperCase();
 }
@@ -18,4 +20,14 @@ export function safePartFilename(designation: string, originalName: string): str
 
 export function partImageUrl(id: string): string {
   return `/api/files/part-images/${id}`;
+}
+
+export function partByNumberUrl(tenantCode: string, designation: string): string {
+  return `/api/files/part-by-number/${encodeURIComponent(tenantCode)}/${encodeURIComponent(normalizePartNo(designation))}`;
+}
+
+export function remotePhotoUrl(baseUrl: string | null | undefined, designation: string): string | null {
+  const base = (baseUrl ?? DEFAULT_PHOTO_BASE_URL).trim().replace(/\/+$/, '');
+  if (!base) return null;
+  return `${base}/${encodeURIComponent(normalizePartNo(designation))}.png`;
 }

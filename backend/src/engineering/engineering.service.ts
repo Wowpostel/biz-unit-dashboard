@@ -6,7 +6,6 @@ import {
 import { SpecItemKind } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { num } from '../common/util';
-import { normalizePartNo } from '../common/part-no';
 import { PartImagesService } from './part-images.service';
 import {
   CreateSpecDto,
@@ -52,7 +51,7 @@ export class EngineeringService {
       },
     });
     if (!spec) throw new NotFoundException('Спецификация не найдена');
-    const photos = await this.partImages.mapByNumber(tenantId);
+    const photoOf = await this.partImages.resolver(tenantId);
     return {
       ...spec,
       items: spec.items.map((item) => ({
@@ -63,7 +62,7 @@ export class EngineeringService {
           timeNormHours: num(op.timeNormHours),
         })),
         hasWork: item._count.workItems > 0,
-        photoUrl: photos.get(normalizePartNo(item.designation))?.url ?? null,
+        photoUrl: photoOf(item.designation),
       })),
     };
   }

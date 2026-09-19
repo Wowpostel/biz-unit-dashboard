@@ -65,7 +65,16 @@ export default function PrintQrPage() {
             <div className="print-meta">Наименование: {w.name}</div>
             <div style={{ display: 'flex', gap: 12 }}>
               <QRCodeSVG value={w.qrCode} size={120} />
-              {w.photoUrl ? <img src={w.photoUrl} alt={w.designation} style={{ width: 120, height: 90, objectFit: 'cover' }} /> : null}
+              {w.photoUrl ? (
+                <img
+                  src={w.photoUrl}
+                  alt={w.designation}
+                  style={{ width: 120, height: 90, objectFit: 'contain' }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : null}
               <div className="print-meta">
                 <div>
                   <strong>{w.qrCode}</strong>

@@ -6,8 +6,8 @@ import {
 import { OperationStatus, Prisma, WorkItemStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProductionService } from '../production/production.service';
+import { PartImagesService } from '../engineering/part-images.service';
 import { hoursBetween, num } from '../common/util';
-import { normalizePartNo, partImageUrl } from '../common/part-no';
 import { ManualTimeDto, StartTimerDto, StopTimerDto } from './dto';
 
 @Injectable()
@@ -15,6 +15,7 @@ export class TerminalService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly production: ProductionService,
+    private readonly partImages: PartImagesService,
   ) {}
 
   async scan(tenantId: string, qrCode: string, postId?: string) {
@@ -61,10 +62,7 @@ export class TerminalService {
       },
       orderBy: [{ status: 'desc' }, { seq: 'asc' }],
     });
-    const photos = await this.prisma.partImage.findMany({ where: { tenantId } });
-    const photoMap = new Map(
-      photos.map((r) => [normalizePartNo(r.designation), r.publicPath || partImageUrl(r.id)]),
-    );
+    const photoOf = await this.partImages.resolver(tenantId);
     const ready = [];
     for (const op of ops) {
       if (!(await this.previousDone(op.workItemId, op.seq))) continue;
@@ -76,7 +74,7 @@ export class TerminalService {
         qrCode: op.workItem.qrCode,
         designation: op.workItem.specItem.designation,
         partName: op.workItem.specItem.name,
-        photoUrl: photoMap.get(normalizePartNo(op.workItem.specItem.designation)) ?? null,
+        photoUrl: photoOf(op.workItem.specItem.designation),
         orderNumber: op.workItem.order.number,
         postedHours: num(op.postedHours),
         timeNormHours: num(op.timeNormHours),

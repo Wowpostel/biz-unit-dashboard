@@ -153,6 +153,9 @@ export default function SpecEditorPage() {
   const [kitOrder, setKitOrder] = useState<string[]>([]);
   const [dragId, setDragId] = useState<string | null>(null);
   const [inboxHint, setInboxHint] = useState('uploads/parts/inbox');
+  const [photoTemplate, setPhotoTemplate] = useState(
+    'https://starksk1.synology.me/web_images/images/{номер}.png',
+  );
 
   useEffect(() => {
     if (!id) return;
@@ -163,9 +166,15 @@ export default function SpecEditorPage() {
         items: Parameters<typeof toRow>[0][];
       }>(`/api/specs/${id}`),
       api<OpType[]>('/api/operation-types'),
-      api<{ inbox: string; items: { designation: string; url: string }[] }>('/api/part-images').catch(() => ({
+      api<{
+        inbox: string;
+        photoBaseUrl?: string;
+        template?: string;
+        items: { designation: string; url: string }[];
+      }>('/api/part-images').catch(() => ({
         inbox: 'uploads/parts/inbox',
-        items: [],
+        template: undefined as string | undefined,
+        items: [] as { designation: string; url: string }[],
       })),
     ])
       .then(([spec, opTypes, photos]) => {
@@ -174,6 +183,7 @@ export default function SpecEditorPage() {
         setRows(spec.items.map(toRow));
         setTypes(opTypes);
         if (photos.inbox) setInboxHint(photos.inbox);
+        if (photos.template) setPhotoTemplate(photos.template);
       })
       .catch((e) => setError(e.message));
   }, [id]);
@@ -622,8 +632,9 @@ export default function SpecEditorPage() {
         <div className="card">
           <h3>Фото деталей</h3>
           <p className="muted">
-            Имя файла = номер детали (Д-01.jpg). Пачка раскладывается в uploads/parts/pilot/. Inbox:{' '}
-            <code>{inboxHint}</code>
+            Сначала с NAS по шаблону <code>{photoTemplate}</code> — имя файла = номер детали, не
+            наименование. Если файла там нет, пачка или inbox: <code>{inboxHint}</code> →{' '}
+            <code>uploads/parts/pilot/{'{номер}'}.ext</code>. В Postgres только путь, не blob.
           </p>
           <div className="form-row">
             <input
@@ -679,7 +690,14 @@ export default function SpecEditorPage() {
                 </td>
                 <td>
                   {r.photoUrl ? (
-                    <img className="part-thumb" src={r.photoUrl} alt={r.designation} />
+                    <img
+                      className="part-thumb"
+                      src={r.photoUrl}
+                      alt={r.designation}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
                   ) : (
                     <span className="part-thumb empty" title="Нет фото" />
                   )}

@@ -6,7 +6,7 @@ import {
 import { OperationStatus, Prisma, SpecItemKind, WorkItemStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { makeQrCode, num } from '../common/util';
-import { normalizePartNo, partImageUrl } from '../common/part-no';
+import { PartImagesService } from '../engineering/part-images.service';
 import { CreateOrderDto, LaunchDto } from './dto';
 
 type ItemRow = {
@@ -27,7 +27,10 @@ type ItemRow = {
 
 @Injectable()
 export class ProductionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly partImages: PartImagesService,
+  ) {}
 
   async listOrders(tenantId: string) {
     const orders = await this.prisma.order.findMany({
@@ -74,7 +77,7 @@ export class ProductionService {
       ...order,
       lines: order.lines.map((l) => ({ ...l, qty: num(l.qty) })),
       workItems: order.workItems.map((w) =>
-        this.serializeWorkItem(w, false, photos.get(normalizePartNo(w.specItem.designation)) ?? null),
+        this.serializeWorkItem(w, false, photos(w.specItem.designation)),
       ),
     };
   }
@@ -257,7 +260,7 @@ export class ProductionService {
     return {
       ...launch,
       workItems: launch.workItems.map((w) =>
-        this.serializeWorkItem(w, false, photos.get(normalizePartNo(w.specItem.designation)) ?? null),
+        this.serializeWorkItem(w, false, photos(w.specItem.designation)),
       ),
     };
   }
@@ -286,7 +289,7 @@ export class ProductionService {
     return this.serializeWorkItem(
       item,
       true,
-      photos.get(normalizePartNo(item.specItem.designation)) ?? null,
+      photos(item.specItem.designation),
     );
   }
 
@@ -319,16 +322,13 @@ export class ProductionService {
       this.serializeWorkItem(
         item,
         true,
-        photos.get(normalizePartNo(item.specItem.designation)) ?? null,
+        photos(item.specItem.designation),
       ),
     );
   }
 
   private async partPhotos(tenantId: string) {
-    const rows = await this.prisma.partImage.findMany({ where: { tenantId } });
-    return new Map(
-      rows.map((r) => [normalizePartNo(r.designation), r.publicPath || partImageUrl(r.id)]),
-    );
+    return this.partImages.resolver(tenantId);
   }
 
   private async orderStats(tenantId: string, orderIds: string[]) {

@@ -6,7 +6,7 @@ import {
   WorkItemStatus,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { mkdirSync, writeFileSync } from 'fs';
+import { copyFileSync, existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
 function qr() {
@@ -151,6 +151,173 @@ async function ensurePartPlaceholders(tenantId: string, tenantCode: string) {
   }
 }
 
+const KD_NO = '0350166';
+const KD_NAME = 'Деталь по КД';
+const DEFAULT_PHOTO_BASE = 'https://starksk1.synology.me/web_images/images';
+const KD_SAMPLE_PATHS = [
+  '/cursor/stores/bc-6fc48650-135b-4bd0-9a93-aed633e8e686/media/kd-samples/0350166.png',
+  join(__dirname, '../../..', 'cursor/stores/bc-6fc48650-135b-4bd0-9a93-aed633e8e686/media/kd-samples/0350166.png'),
+];
+
+async function ensurePhotoBase(tenantId: string) {
+  await prisma.tenant.update({
+    where: { id: tenantId },
+    data: { photoBaseUrl: DEFAULT_PHOTO_BASE },
+  });
+}
+
+async function copyKdPng(dest: string) {
+  for (const src of KD_SAMPLE_PATHS) {
+    if (existsSync(src)) {
+      copyFileSync(src, dest);
+      return true;
+    }
+  }
+  try {
+    const resp = await fetch(`${DEFAULT_PHOTO_BASE}/${KD_NO}.png`);
+    if (!resp.ok) return false;
+    writeFileSync(dest, Buffer.from(await resp.arrayBuffer()));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function ensureKdSample(tenantId: string, tenantCode: string) {
+  await ensurePhotoBase(tenantId);
+  const root = process.env.UPLOAD_DIR ?? './uploads';
+  const dir = join(root, 'parts', tenantCode);
+  mkdirSync(dir, { recursive: true });
+  const dest = join(dir, `${KD_NO}.png`);
+  await copyKdPng(dest);
+  if (existsSync(dest)) {
+    const row = await prisma.partImage.upsert({
+      where: { tenantId_designation: { tenantId, designation: KD_NO } },
+      update: {
+        filename: `${KD_NO}.png`,
+        mimeType: 'image/png',
+        storagePath: dest,
+      },
+      create: {
+        tenantId,
+        designation: KD_NO,
+        filename: `${KD_NO}.png`,
+        mimeType: 'image/png',
+        storagePath: dest,
+        publicPath: '',
+      },
+    });
+    await prisma.partImage.update({
+      where: { id: row.id },
+      data: { publicPath: `/api/files/part-images/${row.id}` },
+    });
+  }
+
+  const spec = await prisma.spec.findFirst({ where: { tenantId, code: 'РЦ-12' } });
+  if (!spec) return;
+  const reducer = await prisma.specItem.findFirst({
+    where: { specId: spec.id, designation: 'РЦ-12' },
+  });
+  let item = await prisma.specItem.findFirst({
+    where: { tenantId, specId: spec.id, designation: KD_NO },
+  });
+  if (!item) {
+    item = await prisma.specItem.create({
+      data: {
+        tenantId,
+        specId: spec.id,
+        parentId: reducer?.id ?? null,
+        designation: KD_NO,
+        name: KD_NAME,
+        qty: 1,
+        kind: SpecItemKind.PART,
+        sortOrder: 6,
+      },
+    });
+  } else if (item.name === item.designation || !item.name.trim()) {
+    item = await prisma.specItem.update({
+      where: { id: item.id },
+      data: { name: KD_NAME },
+    });
+  }
+
+  const tokPost = await prisma.post.findFirst({ where: { tenantId, code: 'ТОКАР' } });
+  const tokType = await prisma.operationType.findFirst({ where: { tenantId, code: 'ТОК' } });
+  let techOp = await prisma.techOperation.findFirst({
+    where: { specItemId: item.id },
+    orderBy: { seq: 'asc' },
+  });
+  if (!techOp && tokPost && tokType) {
+    techOp = await prisma.techOperation.create({
+      data: {
+        tenantId,
+        specItemId: item.id,
+        seq: 10,
+        name: 'Точить по КД',
+        postId: tokPost.id,
+        operationTypeId: tokType.id,
+        timeNormHours: 0.5,
+        instruction: 'Обработать по чертежу 0350166. Номер на фото = номер детали.',
+      },
+    });
+  }
+
+  const existingWork = await prisma.workItem.findFirst({
+    where: { tenantId, specItemId: item.id },
+  });
+  if (existingWork || !techOp) return;
+
+  const order = await prisma.order.findFirst({ where: { tenantId, number: 'З-1001' } });
+  if (!order) return;
+  let launch = await prisma.launch.findFirst({ where: { orderId: order.id } });
+  if (!launch) {
+    const disp = await prisma.user.findFirst({
+      where: { tenantId, email: 'disp@erpevv.local' },
+    });
+    if (!disp) return;
+    launch = await prisma.launch.create({
+      data: {
+        tenantId,
+        orderId: order.id,
+        specId: spec.id,
+        qty: 1,
+        launchedById: disp.id,
+        comment: 'Пилот: деталь 0350166 с фото КД',
+      },
+    });
+  }
+  const workItem = await prisma.workItem.create({
+    data: {
+      tenantId,
+      launchId: launch.id,
+      orderId: order.id,
+      specItemId: item.id,
+      qrCode: qr(),
+      pieceIndex: 1,
+      qty: 1,
+      isPiece: true,
+      status: WorkItemStatus.QUEUED,
+    },
+  });
+  await prisma.workOperation.create({
+    data: {
+      tenantId,
+      workItemId: workItem.id,
+      techOperationId: techOp.id,
+      seq: techOp.seq,
+      name: techOp.name,
+      postId: techOp.postId,
+      timeNormHours: techOp.timeNormHours,
+      instruction: techOp.instruction,
+      status: OperationStatus.PENDING,
+    },
+  });
+  await prisma.order.update({
+    where: { id: order.id },
+    data: { status: 'IN_PROGRESS' },
+  });
+}
+
 async function main() {
   const existing = await prisma.tenant.findUnique({ where: { code: 'pilot' } });
   if (existing) {
@@ -177,12 +344,17 @@ async function main() {
     }
     await ensurePilotLogins(existing.id);
     await ensurePartPlaceholders(existing.id, existing.code);
-    console.log('Пилот уже заполнен, дописали суперпользователя, фото деталей и оборудование при необходимости.');
+    await ensureKdSample(existing.id, existing.code);
+    console.log('Пилот уже заполнен, дописали суперпользователя, фото КД 0350166 и оборудование при необходимости.');
     return;
   }
 
   const tenant = await prisma.tenant.create({
-    data: { code: 'pilot', name: 'Пилотный завод' },
+    data: {
+      code: 'pilot',
+      name: 'Пилотный завод',
+      photoBaseUrl: DEFAULT_PHOTO_BASE,
+    },
   });
 
   const posts = {
@@ -539,6 +711,7 @@ async function main() {
   await explode(orderLive.id, 2);
   await explode(orderLate.id, 1, [{ specItemId: shaft.id, count: 1 }]);
   await ensurePartPlaceholders(tenant.id, tenant.code);
+  await ensureKdSample(tenant.id, tenant.code);
 
   console.log('Пилот ERPEVV заполнен.');
   console.log('super@erpevv.local / Super123!');

@@ -285,7 +285,14 @@ export default function KioskPage() {
         <div className={`panel ${scan.otherPostName ? 'warn' : ''}`}>
           <div className="kiosk-part">
             {scan.photoUrl ? (
-              <img className="part-photo" src={scan.photoUrl} alt={scan.designation} />
+              <img
+                className="part-photo"
+                src={scan.photoUrl}
+                alt={scan.designation}
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
             ) : (
               <div className="part-photo empty">Нет фото</div>
             )}
@@ -360,7 +367,17 @@ export default function KioskPage() {
                 void doScan(h.qrCode);
               }}
             >
-              {h.photoUrl ? <img className="part-thumb" src={h.photoUrl} alt="" /> : null} Номер {h.designation} ·{' '}
+              {h.photoUrl ? (
+                <img
+                  className="part-thumb"
+                  src={h.photoUrl}
+                  alt=""
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : null}{' '}
+              Номер {h.designation} ·{' '}
               {h.name} · QR {h.qrCode}
             </button>
           ))}
@@ -405,7 +422,16 @@ export default function KioskPage() {
                   doScan(q.qrCode);
                 }}
               >
-                {q.photoUrl ? <img className="part-thumb" src={q.photoUrl} alt="" /> : null}
+                {q.photoUrl ? (
+                  <img
+                    className="part-thumb"
+                    src={q.photoUrl}
+                    alt=""
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ) : null}
                 <span>
                   Номер {q.designation} — {q.partName} ({q.orderNumber})
                 </span>

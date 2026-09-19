@@ -153,9 +153,11 @@ export class EngineeringController {
   @Get('part-images')
   async listPartImages(@CurrentUser() user: AuthUser) {
     const items = await this.partImages.list(user.tenantId);
+    const settings = await this.partImages.settings(user.tenantId);
     return {
       inbox: this.partImages.inboxDir(),
       layout: 'uploads/parts/{tenant}/{номер}.ext',
+      ...settings,
       items,
     };
   }
@@ -207,6 +209,23 @@ export class EngineeringController {
     const img = await this.partImages.get(undefined, id);
     res.setHeader('Content-Type', img.mimeType);
     createReadStream(img.storagePath).pipe(res);
+  }
+
+  @Public()
+  @Get('files/part-by-number/:tenantCode/:number')
+  async publicPartByNumber(
+    @Param('tenantCode') tenantCode: string,
+    @Param('number') number: string,
+    @Res() res: Response,
+  ) {
+    const file = await this.partImages.openByNumber(tenantCode, number);
+    res.setHeader('Content-Type', file.mimeType);
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    if (file.path) {
+      createReadStream(file.path).pipe(res);
+      return;
+    }
+    res.send(file.buffer);
   }
 
   @Roles(Role.ADMIN, Role.TECHNOLOGIST)
