@@ -1,12 +1,13 @@
 import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { isOperatorOnly } from '../api';
 import { useAuth } from '../auth';
 
 export default function LoginPage() {
   const { login } = useAuth();
   const nav = useNavigate();
-  const [email, setEmail] = useState('disp@erpevv.local');
-  const [password, setPassword] = useState('Disp123!');
+  const [email, setEmail] = useState('super@erpevv.local');
+  const [password, setPassword] = useState('Super123!');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -16,7 +17,7 @@ export default function LoginPage() {
     setError('');
     try {
       const user = await login(email, password);
-      nav(user.role === 'OPERATOR' ? '/kiosk' : '/office', { replace: true });
+      nav(isOperatorOnly(user.role) ? '/kiosk' : '/office', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка входа');
     } finally {

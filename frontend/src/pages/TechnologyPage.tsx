@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api } from '../api';
+import { api, isSuper } from '../api';
 import { useAuth } from '../auth';
 
 type Post = { id: string; name: string };
@@ -28,7 +28,7 @@ type Item = {
 export default function TechnologyPage() {
   const { id } = useParams();
   const { user } = useAuth();
-  const canEdit = user?.role === 'ADMIN' || user?.role === 'TECHNOLOGIST';
+  const canEdit = isSuper(user?.role) || user?.role === 'ADMIN' || user?.role === 'TECHNOLOGIST';
   const [items, setItems] = useState<Item[]>([]);
   const [code, setCode] = useState('');
   const [posts, setPosts] = useState<Post[]>([]);

@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api } from '../api';
+import { api, isSuper } from '../api';
 import { useAuth } from '../auth';
 
 type WorkItem = {
@@ -47,7 +47,7 @@ const statusRu: Record<string, string> = {
 export default function OrderPage() {
   const { id } = useParams();
   const { user } = useAuth();
-  const canLaunch = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
+  const canLaunch = isSuper(user?.role) || user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
   const [order, setOrder] = useState<Order | null>(null);
   const [specId, setSpecId] = useState('');
   const [qty, setQty] = useState(1);

@@ -1,6 +1,6 @@
 import { ClipboardEvent, KeyboardEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api } from '../api';
+import { api, isSuper } from '../api';
 import { useAuth } from '../auth';
 
 type Kind = 'ASSEMBLY' | 'PART' | 'MATERIAL';
@@ -136,7 +136,7 @@ type LookupHit = {
 export default function SpecEditorPage() {
   const { id } = useParams();
   const { user } = useAuth();
-  const canEdit = user?.role === 'ADMIN' || user?.role === 'TECHNOLOGIST';
+  const canEdit = isSuper(user?.role) || user?.role === 'ADMIN' || user?.role === 'TECHNOLOGIST';
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [rows, setRows] = useState<Row[]>([]);

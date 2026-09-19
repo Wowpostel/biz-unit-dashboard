@@ -37,6 +37,68 @@ async function ensureEquipment(
   });
 }
 
+async function ensureUser(
+  tenantId: string,
+  data: { email: string; password: string; fullName: string; role: Role; employeeId?: string },
+) {
+  const passwordHash = await bcrypt.hash(data.password, 10);
+  await prisma.user.upsert({
+    where: { tenantId_email: { tenantId, email: data.email } },
+    update: {
+      fullName: data.fullName,
+      role: data.role,
+      isActive: true,
+      passwordHash,
+      ...(data.employeeId ? { employeeId: data.employeeId } : {}),
+    },
+    create: {
+      tenantId,
+      email: data.email,
+      passwordHash,
+      fullName: data.fullName,
+      role: data.role,
+      employeeId: data.employeeId,
+    },
+  });
+}
+
+async function ensurePilotLogins(tenantId: string) {
+  const ivanov = await prisma.employee.findFirst({
+    where: { tenantId, personnelNo: 'Т-014' },
+  });
+  await ensureUser(tenantId, {
+    email: 'super@erpevv.local',
+    password: 'Super123!',
+    fullName: 'Суперпользователь',
+    role: Role.SUPER,
+  });
+  await ensureUser(tenantId, {
+    email: 'admin@erpevv.local',
+    password: 'Admin123!',
+    fullName: 'Администратор площадки',
+    role: Role.ADMIN,
+  });
+  await ensureUser(tenantId, {
+    email: 'tech@erpevv.local',
+    password: 'Tech123!',
+    fullName: 'Елена Технолог',
+    role: Role.TECHNOLOGIST,
+  });
+  await ensureUser(tenantId, {
+    email: 'disp@erpevv.local',
+    password: 'Disp123!',
+    fullName: 'Дмитрий Диспетчер',
+    role: Role.DISPATCHER,
+  });
+  await ensureUser(tenantId, {
+    email: 'oper@erpevv.local',
+    password: 'Oper123!',
+    fullName: 'Иванов Сергей Петрович',
+    role: Role.OPERATOR,
+    employeeId: ivanov?.id,
+  });
+}
+
 async function main() {
   const existing = await prisma.tenant.findUnique({ where: { code: 'pilot' } });
   if (existing) {
@@ -61,7 +123,8 @@ async function main() {
         data: { defaultPostId: byCode['СБОР'].id },
       });
     }
-    console.log('Пилот уже заполнен, дописали оборудование при необходимости.');
+    await ensurePilotLogins(existing.id);
+    console.log('Пилот уже заполнен, дописали суперпользователя и оборудование при необходимости.');
     return;
   }
 
@@ -113,7 +176,7 @@ async function main() {
 
   await ensureEquipment(tenant.id, posts);
 
-  const ivanov = await prisma.employee.create({
+  await prisma.employee.create({
     data: {
       tenantId: tenant.id,
       fullName: 'Иванов Сергей Петрович',
@@ -138,44 +201,9 @@ async function main() {
     },
   });
 
-  const hash = async (p: string) => bcrypt.hash(p, 10);
-
-  await prisma.user.create({
-    data: {
-      tenantId: tenant.id,
-      email: 'admin@erpevv.local',
-      passwordHash: await hash('Admin123!'),
-      fullName: 'Администратор площадки',
-      role: Role.ADMIN,
-    },
-  });
-  await prisma.user.create({
-    data: {
-      tenantId: tenant.id,
-      email: 'tech@erpevv.local',
-      passwordHash: await hash('Tech123!'),
-      fullName: 'Елена Технолог',
-      role: Role.TECHNOLOGIST,
-    },
-  });
-  const dispatcher = await prisma.user.create({
-    data: {
-      tenantId: tenant.id,
-      email: 'disp@erpevv.local',
-      passwordHash: await hash('Disp123!'),
-      fullName: 'Дмитрий Диспетчер',
-      role: Role.DISPATCHER,
-    },
-  });
-  await prisma.user.create({
-    data: {
-      tenantId: tenant.id,
-      email: 'oper@erpevv.local',
-      passwordHash: await hash('Oper123!'),
-      fullName: 'Иванов Сергей Петрович',
-      role: Role.OPERATOR,
-      employeeId: ivanov.id,
-    },
+  await ensurePilotLogins(tenant.id);
+  const dispatcher = await prisma.user.findFirstOrThrow({
+    where: { tenantId: tenant.id, email: 'disp@erpevv.local' },
   });
 
   const spec = await prisma.spec.create({

@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './auth';
+import { isOperatorOnly } from './api';
 import LoginPage from './pages/LoginPage';
 import OfficeLayout from './pages/OfficeLayout';
 import DashboardPage from './pages/DashboardPage';
@@ -28,7 +29,7 @@ function Gate({ office }: { office?: boolean }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="boot">Загрузка…</div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (office && user.role === 'OPERATOR') return <Navigate to="/kiosk" replace />;
+  if (office && isOperatorOnly(user.role)) return <Navigate to="/kiosk" replace />;
   return office ? <OfficeLayout /> : <KioskPage />;
 }
 
@@ -42,7 +43,7 @@ export default function App() {
           loading ? (
             <div className="boot">Загрузка…</div>
           ) : user ? (
-            <Navigate to={user.role === 'OPERATOR' ? '/kiosk' : '/office'} replace />
+            <Navigate to={isOperatorOnly(user.role) ? '/kiosk' : '/office'} replace />
           ) : (
             <LoginPage />
           )

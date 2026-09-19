@@ -1,13 +1,14 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth';
-import { roleLabel } from '../api';
+import { isSuper, roleLabel } from '../api';
 
 export default function OfficeLayout() {
   const { user, logout } = useAuth();
   const role = user?.role;
-  const tech = role === 'ADMIN' || role === 'TECHNOLOGIST';
-  const disp = role === 'ADMIN' || role === 'DISPATCHER';
-  const admin = role === 'ADMIN';
+  const all = isSuper(role);
+  const tech = all || role === 'ADMIN' || role === 'TECHNOLOGIST';
+  const disp = all || role === 'ADMIN' || role === 'DISPATCHER';
+  const admin = all || role === 'ADMIN';
 
   return (
     <div className="shell">
@@ -17,7 +18,11 @@ export default function OfficeLayout() {
           <small>{user?.tenantName}</small>
         </div>
         <nav>
-          {disp && <NavLink to="/office" end>Дашборд</NavLink>}
+          {disp && (
+            <NavLink to="/office" end>
+              Дашборд
+            </NavLink>
+          )}
           {disp && <NavLink to="/office/orders">Заказы</NavLink>}
           <NavLink to="/office/specs">Спецификации</NavLink>
           {tech && <NavLink to="/office/posts">Посты</NavLink>}
@@ -30,7 +35,9 @@ export default function OfficeLayout() {
         <div className="who">
           <div>{user?.fullName}</div>
           <div>{user ? roleLabel[user.role] : ''}</div>
-          <button type="button" onClick={() => logout()}>Выйти</button>
+          <button type="button" onClick={() => logout()}>
+            Выйти
+          </button>
         </div>
       </aside>
       <main className="main">

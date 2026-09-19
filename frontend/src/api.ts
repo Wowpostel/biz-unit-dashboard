@@ -1,6 +1,6 @@
 const TOKEN_KEY = 'erpevv_token';
 
-export type Role = 'ADMIN' | 'TECHNOLOGIST' | 'DISPATCHER' | 'OPERATOR';
+export type Role = 'SUPER' | 'ADMIN' | 'TECHNOLOGIST' | 'DISPATCHER' | 'OPERATOR';
 
 export type Me = {
   id: string;
@@ -52,8 +52,17 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const roleLabel: Record<Role, string> = {
+  SUPER: 'Суперпользователь',
   ADMIN: 'Администратор',
   TECHNOLOGIST: 'Технолог',
   DISPATCHER: 'Диспетчер',
   OPERATOR: 'Оператор',
 };
+
+export function isSuper(role?: Role | null) {
+  return role === 'SUPER';
+}
+
+export function isOperatorOnly(role?: Role | null) {
+  return role === 'OPERATOR';
+}
