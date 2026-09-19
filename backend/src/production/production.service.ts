@@ -6,6 +6,7 @@ import {
 import { OperationStatus, Prisma, SpecItemKind, WorkItemStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { makeQrCode, num } from '../common/util';
+import { normalizePartNo, partImageUrl } from '../common/part-no';
 import { CreateOrderDto, LaunchDto } from './dto';
 
 type ItemRow = {
@@ -68,10 +69,13 @@ export class ProductionService {
       },
     });
     if (!order) throw new NotFoundException('Заказ не найден');
+    const photos = await this.partPhotos(tenantId);
     return {
       ...order,
       lines: order.lines.map((l) => ({ ...l, qty: num(l.qty) })),
-      workItems: order.workItems.map((w) => this.serializeWorkItem(w)),
+      workItems: order.workItems.map((w) =>
+        this.serializeWorkItem(w, false, photos.get(normalizePartNo(w.specItem.designation)) ?? null),
+      ),
     };
   }
 
@@ -249,9 +253,12 @@ export class ProductionService {
       },
     });
     if (!launch) throw new NotFoundException('Запуск не найден');
+    const photos = await this.partPhotos(tenantId);
     return {
       ...launch,
-      workItems: launch.workItems.map((w) => this.serializeWorkItem(w)),
+      workItems: launch.workItems.map((w) =>
+        this.serializeWorkItem(w, false, photos.get(normalizePartNo(w.specItem.designation)) ?? null),
+      ),
     };
   }
 
@@ -275,7 +282,53 @@ export class ProductionService {
       },
     });
     if (!item) throw new NotFoundException('Деталь с таким QR не найдена');
-    return this.serializeWorkItem(item, true);
+    const photos = await this.partPhotos(tenantId);
+    return this.serializeWorkItem(
+      item,
+      true,
+      photos.get(normalizePartNo(item.specItem.designation)) ?? null,
+    );
+  }
+
+  async findWorkItemsByNumber(tenantId: string, number: string) {
+    const q = number.trim();
+    if (!q) throw new BadRequestException('Укажите номер детали');
+    const items = await this.prisma.workItem.findMany({
+      where: {
+        tenantId,
+        specItem: { designation: { contains: q, mode: 'insensitive' } },
+      },
+      include: {
+        specItem: { include: { spec: true } },
+        order: true,
+        launch: { include: { spec: true } },
+        operations: {
+          include: {
+            post: true,
+            techOperation: { include: { images: true, operationType: true } },
+            activeOperator: { select: { fullName: true } },
+          },
+          orderBy: { seq: 'asc' },
+        },
+      },
+      orderBy: [{ specItem: { designation: 'asc' } }, { pieceIndex: 'asc' }],
+      take: 30,
+    });
+    const photos = await this.partPhotos(tenantId);
+    return items.map((item) =>
+      this.serializeWorkItem(
+        item,
+        true,
+        photos.get(normalizePartNo(item.specItem.designation)) ?? null,
+      ),
+    );
+  }
+
+  private async partPhotos(tenantId: string) {
+    const rows = await this.prisma.partImage.findMany({ where: { tenantId } });
+    return new Map(
+      rows.map((r) => [normalizePartNo(r.designation), r.publicPath || partImageUrl(r.id)]),
+    );
   }
 
   private async orderStats(tenantId: string, orderIds: string[]) {
@@ -333,6 +386,7 @@ export class ProductionService {
       }[];
     },
     withTech = false,
+    photoUrl: string | null = null,
   ) {
     const ops = [...item.operations].sort((a, b) => a.seq - b.seq);
     const current = ops.find((o) => o.status !== OperationStatus.DONE) ?? null;
@@ -345,6 +399,7 @@ export class ProductionService {
       status: item.status,
       designation: item.specItem.designation,
       name: item.specItem.name,
+      photoUrl,
       kind: item.specItem.kind,
       specCode: item.specItem.spec?.code ?? item.launch?.spec?.code ?? '',
       specName: item.specItem.spec?.name ?? item.launch?.spec?.name ?? '',

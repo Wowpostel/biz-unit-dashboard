@@ -6,6 +6,8 @@ import {
 import { SpecItemKind } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { num } from '../common/util';
+import { normalizePartNo } from '../common/part-no';
+import { PartImagesService } from './part-images.service';
 import {
   CreateSpecDto,
   LookupPartsDto,
@@ -16,7 +18,10 @@ import {
 
 @Injectable()
 export class EngineeringService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly partImages: PartImagesService,
+  ) {}
 
   listSpecs(tenantId: string) {
     return this.prisma.spec.findMany({
@@ -47,6 +52,7 @@ export class EngineeringService {
       },
     });
     if (!spec) throw new NotFoundException('Спецификация не найдена');
+    const photos = await this.partImages.mapByNumber(tenantId);
     return {
       ...spec,
       items: spec.items.map((item) => ({
@@ -57,6 +63,7 @@ export class EngineeringService {
           timeNormHours: num(op.timeNormHours),
         })),
         hasWork: item._count.workItems > 0,
+        photoUrl: photos.get(normalizePartNo(item.designation))?.url ?? null,
       })),
     };
   }
@@ -197,10 +204,9 @@ export class EngineeringService {
       where: {
         tenantId,
         kind: { not: SpecItemKind.MATERIAL },
-        OR: keys.flatMap((key) => [
-          { designation: { equals: key, mode: 'insensitive' } },
-          { name: { equals: key, mode: 'insensitive' } },
-        ]),
+        OR: keys.map((key) => ({
+          designation: { equals: key, mode: 'insensitive' as const },
+        })),
       },
       include: {
         operations: { orderBy: { seq: 'asc' } },
@@ -213,11 +219,9 @@ export class EngineeringService {
       const withTech = items.filter(
         (i) =>
           i.operations.length > 0 &&
-          (i.designation.toLowerCase() === lower || i.name.toLowerCase() === lower),
+          i.designation.toLowerCase() === lower,
       );
-      const any = items.filter(
-        (i) => i.designation.toLowerCase() === lower || i.name.toLowerCase() === lower,
-      );
+      const any = items.filter((i) => i.designation.toLowerCase() === lower);
       const pick = withTech[0] ?? any[0];
       if (!pick) continue;
       result[key] = {

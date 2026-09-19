@@ -19,6 +19,7 @@ type QueueRow = {
   designation: string;
   partName: string;
   name: string;
+  photoUrl?: string | null;
   orderNumber: string;
   status: string;
   postedHours: number;
@@ -28,6 +29,7 @@ type Scan = {
   qrCode: string;
   designation: string;
   name: string;
+  photoUrl?: string | null;
   specCode: string;
   specName: string;
   orderNumber: string;
@@ -58,7 +60,9 @@ export default function KioskPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [postId, setPostId] = useState(localStorage.getItem(POST_KEY) ?? '');
   const [qr, setQr] = useState('');
+  const [partNo, setPartNo] = useState('');
   const [scan, setScan] = useState<Scan | null>(null);
+  const [hits, setHits] = useState<Scan[]>([]);
   const [open, setOpen] = useState<OpenEntry[]>([]);
   const [queue, setQueue] = useState<QueueRow[]>([]);
   const [hours, setHours] = useState('1');
@@ -95,14 +99,48 @@ export default function KioskPage() {
   async function doScan(code: string) {
     setError('');
     setInfo('');
+    setHits([]);
     const row = await api<Scan>(
-      `/api/terminal/scan/${encodeURIComponent(code.trim().toUpperCase())}?postId=${postId}`,
+      `/api/terminal/scan/${encodeURIComponent(code.trim())}?postId=${postId}`,
     );
     setScan(row);
     const mine = await api<OpenEntry[]>('/api/terminal/my-open');
     setOpen(mine);
     const match = mine.find((e) => e.qrCode === row.qrCode);
     setEntryId(match?.id ?? null);
+  }
+
+  async function searchByNumber(e?: FormEvent) {
+    e?.preventDefault();
+    if (!postId) {
+      setError('Сначала выберите пост');
+      return;
+    }
+    const q = partNo.trim();
+    if (!q) {
+      setError('Введите номер детали, не наименование');
+      return;
+    }
+    setError('');
+    setInfo('');
+    try {
+      const rows = await api<Scan[]>(`/api/terminal/find?number=${encodeURIComponent(q)}`);
+      if (!rows.length) {
+        setScan(null);
+        setHits([]);
+        setError('По номеру ничего не найдено (имя не ищем)');
+        return;
+      }
+      if (rows.length === 1) {
+        setHits([]);
+        await doScan(rows[0].qrCode);
+        return;
+      }
+      setScan(null);
+      setHits(rows);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка поиска');
+    }
   }
 
   async function onScan(e: FormEvent) {
@@ -229,14 +267,33 @@ export default function KioskPage() {
           autoFocus
         />
       </form>
+      <form onSubmit={searchByNumber} className="form-row" style={{ marginTop: 10 }}>
+        <input
+          className="qr"
+          placeholder="Поиск по номеру детали (не по наименованию)"
+          value={partNo}
+          onChange={(e) => setPartNo(e.target.value)}
+        />
+        <button className="btn amber" type="submit">
+          Найти по номеру
+        </button>
+      </form>
       {error && <p className="err">{error}</p>}
       {info && <p>{info}</p>}
 
       {scan && (
         <div className={`panel ${scan.otherPostName ? 'warn' : ''}`}>
+          <div className="kiosk-part">
+            {scan.photoUrl ? (
+              <img className="part-photo" src={scan.photoUrl} alt={scan.designation} />
+            ) : (
+              <div className="part-photo empty">Нет фото</div>
+            )}
+            <div>
           <h2>
-            {scan.designation} {scan.name}
+            Номер {scan.designation}
           </h2>
+          <p>Наименование: {scan.name}</p>
           <p>
             Заказ {scan.orderNumber} · {scan.specCode} {scan.specName} · QR {scan.qrCode}
             {scan.dueDate ? ` · срок ${new Date(scan.dueDate).toLocaleDateString('ru')}` : ''}
@@ -285,6 +342,28 @@ export default function KioskPage() {
           ) : (
             <p>Все операции закрыты — деталь готова.</p>
           )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {hits.length > 0 && (
+        <div className="panel">
+          <h3>Найдено по номеру</h3>
+          {hits.map((h) => (
+            <button
+              key={h.qrCode}
+              className="btn ghost"
+              style={{ margin: '6px 8px 6px 0' }}
+              onClick={() => {
+                setPartNo(h.designation);
+                void doScan(h.qrCode);
+              }}
+            >
+              {h.photoUrl ? <img className="part-thumb" src={h.photoUrl} alt="" /> : null} Номер {h.designation} ·{' '}
+              {h.name} · QR {h.qrCode}
+            </button>
+          ))}
         </div>
       )}
 
@@ -302,7 +381,7 @@ export default function KioskPage() {
                   doScan(e.qrCode);
                 }}
               >
-                {e.qrCode} {e.designation} · {e.name}
+                {e.qrCode} · номер {e.designation}
               </button>
             </div>
           ))}
@@ -310,16 +389,26 @@ export default function KioskPage() {
         </div>
         <div className="panel">
           <h3>На этом посту</h3>
-          {queue.map((q) => (
+          {queue
+            .filter((q) => {
+              const n = partNo.trim().toLowerCase();
+              if (!n) return true;
+              return q.designation.toLowerCase().includes(n);
+            })
+            .map((q) => (
             <div key={q.id} style={{ marginBottom: 8 }}>
               <button
-                className="btn ghost"
+                className="btn ghost queue-btn"
                 onClick={() => {
                   setQr(q.qrCode);
+                  setPartNo(q.designation);
                   doScan(q.qrCode);
                 }}
               >
-                {q.qrCode} {q.designation} — {q.name} ({q.orderNumber})
+                {q.photoUrl ? <img className="part-thumb" src={q.photoUrl} alt="" /> : null}
+                <span>
+                  Номер {q.designation} — {q.partName} ({q.orderNumber})
+                </span>
               </button>
             </div>
           ))}

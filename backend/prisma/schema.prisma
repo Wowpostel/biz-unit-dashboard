@@ -58,6 +58,7 @@ model Tenant {
   operationTypes OperationType[]
   specs          Spec[]
   specItems      SpecItem[]
+  partImages     PartImage[]
   techOperations TechOperation[]
   techImages     TechImage[]
   orders         Order[]
@@ -198,6 +199,22 @@ model SpecItem {
   workItems  WorkItem[]
 
   @@index([specId, parentId])
+  @@index([tenantId, designation])
+}
+
+model PartImage {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  designation  String
+  filename     String
+  mimeType     String
+  storagePath  String
+  publicPath   String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([tenantId, designation])
   @@index([tenantId, designation])
 }
 

@@ -20,6 +20,11 @@ export class TerminalController {
     return this.terminal.scan(user.tenantId, qr, postId);
   }
 
+  @Get('find')
+  find(@CurrentUser() user: AuthUser, @Query('number') number: string) {
+    return this.terminal.findByNumber(user.tenantId, number ?? '');
+  }
+
   @Get('queue')
   queue(@CurrentUser() user: AuthUser, @Query('postId') postId: string) {
     return this.terminal.queue(user.tenantId, postId);

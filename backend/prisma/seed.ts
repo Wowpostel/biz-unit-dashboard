@@ -6,6 +6,8 @@ import {
   WorkItemStatus,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { mkdirSync, writeFileSync } from 'fs';
+import { join } from 'path';
 
 function qr() {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -99,6 +101,56 @@ async function ensurePilotLogins(tenantId: string) {
   });
 }
 
+function placeholderSvg(designation: string, name: string) {
+  const safeName = name.replace(/[<>&]/g, '');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="180" viewBox="0 0 240 180">
+  <rect width="240" height="180" fill="#cfd8e6"/>
+  <rect x="14" y="14" width="212" height="152" fill="#f4efe4" stroke="#1b2a41" stroke-width="2"/>
+  <text x="120" y="84" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" fill="#1b2a41">${designation}</text>
+  <text x="120" y="118" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#5c6b7a">${safeName}</text>
+</svg>`;
+}
+
+async function ensurePartPlaceholders(tenantId: string, tenantCode: string) {
+  const parts = [
+    { designation: 'РЦ-12', name: 'Редуктор цилиндрический' },
+    { designation: 'СБ-01', name: 'Корпус в сборе' },
+    { designation: 'Д-01', name: 'Крышка корпуса' },
+    { designation: 'Д-02', name: 'Основание корпуса' },
+    { designation: 'Д-10', name: 'Вал ведущий' },
+  ];
+  const root = process.env.UPLOAD_DIR ?? './uploads';
+  const dir = join(root, 'parts', tenantCode);
+  mkdirSync(dir, { recursive: true });
+  mkdirSync(join(root, 'parts', 'inbox'), { recursive: true });
+  for (const p of parts) {
+    const filename = `${p.designation}.svg`;
+    const dest = join(dir, filename);
+    writeFileSync(dest, placeholderSvg(p.designation, p.name));
+    const row = await prisma.partImage.upsert({
+      where: { tenantId_designation: { tenantId, designation: p.designation } },
+      update: {
+        filename,
+        mimeType: 'image/svg+xml',
+        storagePath: dest,
+      },
+      create: {
+        tenantId,
+        designation: p.designation,
+        filename,
+        mimeType: 'image/svg+xml',
+        storagePath: dest,
+        publicPath: '',
+      },
+    });
+    await prisma.partImage.update({
+      where: { id: row.id },
+      data: { publicPath: `/api/files/part-images/${row.id}` },
+    });
+  }
+}
+
 async function main() {
   const existing = await prisma.tenant.findUnique({ where: { code: 'pilot' } });
   if (existing) {
@@ -124,7 +176,8 @@ async function main() {
       });
     }
     await ensurePilotLogins(existing.id);
-    console.log('Пилот уже заполнен, дописали суперпользователя и оборудование при необходимости.');
+    await ensurePartPlaceholders(existing.id, existing.code);
+    console.log('Пилот уже заполнен, дописали суперпользователя, фото деталей и оборудование при необходимости.');
     return;
   }
 
@@ -485,8 +538,10 @@ async function main() {
 
   await explode(orderLive.id, 2);
   await explode(orderLate.id, 1, [{ specItemId: shaft.id, count: 1 }]);
+  await ensurePartPlaceholders(tenant.id, tenant.code);
 
   console.log('Пилот ERPEVV заполнен.');
+  console.log('super@erpevv.local / Super123!');
   console.log('admin@erpevv.local / Admin123!');
   console.log('tech@erpevv.local / Tech123!');
   console.log('disp@erpevv.local / Disp123!');

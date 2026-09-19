@@ -146,8 +146,8 @@ export default function TechnologyPage() {
                   style={{ background: sel === it.id ? '#f7e7c6' : undefined, cursor: 'pointer' }}
                 >
                   <td>
-                    {it.designation}
-                    <div className="muted">{it.name}</div>
+                    <div>Номер {it.designation}</div>
+                    <div className="muted">Наименование {it.name}</div>
                   </td>
                   <td>{it.operations.length} оп.</td>
                 </tr>
@@ -157,7 +157,7 @@ export default function TechnologyPage() {
         </div>
         <div className="card">
           <h3>
-            {current ? `${current.designation} ${current.name}` : 'Выберите позицию'}
+            {current ? `Номер ${current.designation} · ${current.name}` : 'Выберите позицию'}
           </h3>
           {canEdit && (
           <button className="btn" type="button" onClick={addOp} disabled={!sel}>

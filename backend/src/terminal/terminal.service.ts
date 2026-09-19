@@ -7,6 +7,7 @@ import { OperationStatus, Prisma, WorkItemStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProductionService } from '../production/production.service';
 import { hoursBetween, num } from '../common/util';
+import { normalizePartNo, partImageUrl } from '../common/part-no';
 import { ManualTimeDto, StartTimerDto, StopTimerDto } from './dto';
 
 @Injectable()
@@ -17,7 +18,22 @@ export class TerminalService {
   ) {}
 
   async scan(tenantId: string, qrCode: string, postId?: string) {
-    const item = await this.production.getWorkItemByQr(tenantId, qrCode);
+    const raw = qrCode.trim();
+    let item;
+    try {
+      item = await this.production.getWorkItemByQr(tenantId, raw);
+    } catch {
+      const byNumber = await this.production.findWorkItemsByNumber(tenantId, raw);
+      if (byNumber.length === 1) {
+        item = byNumber[0];
+      } else if (byNumber.length > 1) {
+        throw new BadRequestException(
+          'Несколько деталей с таким номером — отсканируйте QR или уточните',
+        );
+      } else {
+        throw new NotFoundException('Деталь с таким QR или номером не найдена');
+      }
+    }
     const current = item.currentOperation;
     return {
       ...item,
@@ -25,6 +41,10 @@ export class TerminalService {
       otherPostName:
         current?.post && postId && current.post.id !== postId ? current.post.name : null,
     };
+  }
+
+  findByNumber(tenantId: string, number: string) {
+    return this.production.findWorkItemsByNumber(tenantId, number);
   }
 
   async queue(tenantId: string, postId: string) {
@@ -41,6 +61,10 @@ export class TerminalService {
       },
       orderBy: [{ status: 'desc' }, { seq: 'asc' }],
     });
+    const photos = await this.prisma.partImage.findMany({ where: { tenantId } });
+    const photoMap = new Map(
+      photos.map((r) => [normalizePartNo(r.designation), r.publicPath || partImageUrl(r.id)]),
+    );
     const ready = [];
     for (const op of ops) {
       if (!(await this.previousDone(op.workItemId, op.seq))) continue;
@@ -52,6 +76,7 @@ export class TerminalService {
         qrCode: op.workItem.qrCode,
         designation: op.workItem.specItem.designation,
         partName: op.workItem.specItem.name,
+        photoUrl: photoMap.get(normalizePartNo(op.workItem.specItem.designation)) ?? null,
         orderNumber: op.workItem.order.number,
         postedHours: num(op.postedHours),
         timeNormHours: num(op.timeNormHours),

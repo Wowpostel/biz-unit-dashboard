@@ -29,6 +29,7 @@ type Row = {
   operations: OpDraft[];
   techSource: TechSource;
   picked: boolean;
+  photoUrl: string | null;
 };
 
 type OpType = {
@@ -100,6 +101,7 @@ function toRow(it: {
   qty: number;
   unit: string;
   kind: Kind;
+  photoUrl?: string | null;
   operations?: OpDraft[];
 }): Row {
   const ops = (it.operations ?? []).map((o) => ({
@@ -124,6 +126,7 @@ function toRow(it: {
     operations: ops,
     techSource: ops.length ? 'own' : 'empty',
     picked: false,
+    photoUrl: it.photoUrl ?? null,
   };
 }
 
@@ -149,6 +152,7 @@ export default function SpecEditorPage() {
   const [kitChecked, setKitChecked] = useState<string[]>([]);
   const [kitOrder, setKitOrder] = useState<string[]>([]);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [inboxHint, setInboxHint] = useState('uploads/parts/inbox');
 
   useEffect(() => {
     if (!id) return;
@@ -159,12 +163,17 @@ export default function SpecEditorPage() {
         items: Parameters<typeof toRow>[0][];
       }>(`/api/specs/${id}`),
       api<OpType[]>('/api/operation-types'),
+      api<{ inbox: string; items: { designation: string; url: string }[] }>('/api/part-images').catch(() => ({
+        inbox: 'uploads/parts/inbox',
+        items: [],
+      })),
     ])
-      .then(([spec, opTypes]) => {
+      .then(([spec, opTypes, photos]) => {
         setCode(spec.code);
         setName(spec.name);
         setRows(spec.items.map(toRow));
         setTypes(opTypes);
+        if (photos.inbox) setInboxHint(photos.inbox);
       })
       .catch((e) => setError(e.message));
   }, [id]);
@@ -213,6 +222,7 @@ export default function SpecEditorPage() {
       operations: [],
       techSource: 'empty',
       picked: true,
+      photoUrl: null,
       ...preset,
     };
     setRows((rs) => {
@@ -234,7 +244,7 @@ export default function SpecEditorPage() {
     setRows((rs) =>
       rs.map((r) => {
         if (!targetIds.includes(r.clientId)) return r;
-        const hit = found[r.designation] ?? found[r.name] ?? null;
+        const hit = found[r.designation] ?? null;
         if (!hit) {
           return { ...r, techSource: r.operations.length ? r.techSource : 'empty' };
         }
@@ -250,7 +260,7 @@ export default function SpecEditorPage() {
         return {
           ...r,
           name: r.name || hit.name,
-          designation: r.designation || hit.designation,
+          designation: r.designation,
           operations: ops,
           techSource: ops.length ? 'catalog' : 'empty',
         };
@@ -275,6 +285,7 @@ export default function SpecEditorPage() {
       operations: [],
       techSource: 'empty',
       picked: true,
+      photoUrl: null,
     }));
     const lookupIds = created.map((c) => c.clientId);
     if (fillCurrent && afterRow) lookupIds.push(afterRow.clientId);
@@ -301,8 +312,8 @@ export default function SpecEditorPage() {
     });
     if (created[0]) setSel(created[0].clientId);
     const keys = [
-      ...(fillCurrent && parsed[0] ? [parsed[0].designation || parsed[0].name] : []),
-      ...created.map((c) => c.designation || c.name),
+      ...(fillCurrent && parsed[0] ? [parsed[0].designation] : []),
+      ...created.map((c) => c.designation),
     ].filter(Boolean);
     if (keys.length) {
       try {
@@ -374,6 +385,39 @@ export default function SpecEditorPage() {
     setError('');
   }
 
+  function copyTimes() {
+    const source = rows.find((r) => r.clientId === sel);
+    if (!source || !source.operations.length) {
+      setError('Выделите строку-источник с нормами (клик по детали)');
+      return;
+    }
+    const targets = rows.filter((r) => r.picked && r.clientId !== sel && r.kind !== 'MATERIAL');
+    if (!targets.length) {
+      setError('Отметьте галочками детали, на которые копировать нормы');
+      return;
+    }
+    const ids = new Set(targets.map((r) => r.clientId));
+    setRows((rs) =>
+      rs.map((r) => {
+        if (!ids.has(r.clientId) || !r.operations.length) return r;
+        const used = new Set<number>();
+        const operations = r.operations.map((op, idx) => {
+          const byName = source.operations.findIndex(
+            (s, si) => !used.has(si) && s.name.trim().toLowerCase() === op.name.trim().toLowerCase(),
+          );
+          const srcIdx = byName >= 0 ? byName : source.operations[idx] ? idx : -1;
+          if (srcIdx < 0) return op;
+          used.add(srcIdx);
+          const src = source.operations[srcIdx];
+          return { ...op, minText: src.minText, timeNormHours: hoursOf(src.minText) };
+        });
+        return { ...r, operations };
+      }),
+    );
+    setSaved('Нормы минут наложены на выбранные детали.');
+    setError('');
+  }
+
   function setOpMinutes(row: Row, index: number, minText: string) {
     const ops = row.operations.map((o, i) =>
       i === index ? { ...o, minText, timeNormHours: hoursOf(minText) } : o,
@@ -398,7 +442,7 @@ export default function SpecEditorPage() {
             parentClientId: r.parentClientId,
             sortOrder: i,
             designation: r.designation,
-            name: r.name || r.designation,
+            name: r.name,
             qty: Number(r.qty) || 1,
             unit: r.unit || 'шт',
             kind: r.kind,
@@ -424,6 +468,34 @@ export default function SpecEditorPage() {
     }
   }
 
+  async function uploadPack(files: FileList | null) {
+    if (!files?.length) return;
+    setError('');
+    const body = new FormData();
+    for (const f of Array.from(files)) body.append('files', f);
+    try {
+      await api('/api/part-images/pack', { method: 'POST', body });
+      const spec = await api<{ items: Parameters<typeof toRow>[0][] }>(`/api/specs/${id}`);
+      setRows(spec.items.map(toRow));
+      setSaved('Пачка фото разобрана по номерам файлов.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось разложить фото');
+    }
+  }
+
+  async function ingestInbox() {
+    setError('');
+    try {
+      const res = await api<{ inbox: string; organized: number }>(`/api/part-images/ingest`, { method: 'POST' });
+      const spec = await api<{ items: Parameters<typeof toRow>[0][] }>(`/api/specs/${id}`);
+      setRows(spec.items.map(toRow));
+      setInboxHint(res.inbox);
+      setSaved(`Из inbox разобрано файлов: ${res.organized}.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Inbox пуст или недоступен');
+    }
+  }
+
   const selected = rows.find((r) => r.clientId === sel);
 
   return (
@@ -432,8 +504,8 @@ export default function SpecEditorPage() {
         <div>
           <h1>Спецификация {code}</h1>
           <p>
-            Вставьте столбец из Excel — появятся строки. Если деталь уже в базе, технология подтянется.
-            Новым оставьте пустые операции и наложите набор.{' '}
+            Вставьте столбец номеров из Excel — появятся строки. Номер и наименование — разные поля.
+            Если номер уже в базе, технология подтянется. Нормы минут копируются так же, как набор операций.{' '}
             <Link to={`/office/specs/${id}/tech`}>Текст и фото операций →</Link>
           </p>
         </div>
@@ -452,10 +524,13 @@ export default function SpecEditorPage() {
         <div className="grid-2">
           <div className="card">
             <h3>Вставка столбца Excel</h3>
-            <p className="muted">Один столбец обозначений/имён или два столбца через табуляцию. Ctrl+V в ячейку тоже создаёт строки.</p>
+            <p className="muted">
+              Первый столбец — номер (обозначение), второй — наименование. Один столбец = только номера, имя не
+              подставляется.
+            </p>
             <textarea
               className="paste-box"
-              placeholder={'Д-01\nД-02\nД-88 Новая деталь'}
+              placeholder={'Д-01\nД-02\nД-88'}
               value={pasteText}
               onChange={(e) => setPasteText(e.target.value)}
               onPaste={(e) => {
@@ -536,6 +611,33 @@ export default function SpecEditorPage() {
             <button className="btn amber" type="button" onClick={applyKit} style={{ marginTop: 10 }}>
               Наложить на выбранные детали
             </button>
+            <button className="btn" type="button" onClick={copyTimes} style={{ marginTop: 10, marginLeft: 8 }}>
+              Наложить нормы на выбранные
+            </button>
+          </div>
+        </div>
+      )}
+
+      {canEdit && (
+        <div className="card">
+          <h3>Фото деталей</h3>
+          <p className="muted">
+            Имя файла = номер детали (Д-01.jpg). Пачка раскладывается в uploads/parts/pilot/. Inbox:{' '}
+            <code>{inboxHint}</code>
+          </p>
+          <div className="form-row">
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={(e) => {
+                void uploadPack(e.target.files);
+                e.target.value = '';
+              }}
+            />
+            <button className="btn ghost" type="button" onClick={() => void ingestInbox()}>
+              Разложить inbox
+            </button>
           </div>
         </div>
       )}
@@ -546,8 +648,9 @@ export default function SpecEditorPage() {
         <thead>
           <tr>
             <th style={{ width: 36 }}></th>
+            <th style={{ width: 52 }}>Фото</th>
             <th style={{ width: 40 }}>Ур.</th>
-            <th>Обозначение</th>
+            <th>Номер</th>
             <th>Наименование</th>
             <th style={{ width: 70 }}>Кол-во</th>
             <th style={{ width: 60 }}>Ед.</th>
@@ -573,6 +676,13 @@ export default function SpecEditorPage() {
                     onChange={(e) => patch(r.clientId, { picked: e.target.checked })}
                     disabled={!canEdit || r.kind === 'MATERIAL'}
                   />
+                </td>
+                <td>
+                  {r.photoUrl ? (
+                    <img className="part-thumb" src={r.photoUrl} alt={r.designation} />
+                  ) : (
+                    <span className="part-thumb empty" title="Нет фото" />
+                  )}
                 </td>
                 <td>{lvl + 1}</td>
                 <td style={{ paddingLeft: 8 + lvl * 18 }}>

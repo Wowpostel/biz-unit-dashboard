@@ -8,6 +8,7 @@ type WorkItem = {
   qrCode: string;
   designation: string;
   name: string;
+  photoUrl?: string | null;
   pieceIndex: number;
   orderNumber: string;
   specCode: string;
@@ -60,11 +61,11 @@ export default function PrintQrPage() {
       <div className="print-grid">
         {launch.workItems.map((w) => (
           <div className="print-card" key={w.id}>
-            <h3>
-              {w.designation} {w.name}
-            </h3>
+            <h3>Номер {w.designation}</h3>
+            <div className="print-meta">Наименование: {w.name}</div>
             <div style={{ display: 'flex', gap: 12 }}>
               <QRCodeSVG value={w.qrCode} size={120} />
+              {w.photoUrl ? <img src={w.photoUrl} alt={w.designation} style={{ width: 120, height: 90, objectFit: 'cover' }} /> : null}
               <div className="print-meta">
                 <div>
                   <strong>{w.qrCode}</strong>

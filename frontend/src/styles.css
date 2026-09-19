@@ -195,6 +195,24 @@ table.data tr.ok { background: #e7f4ea; }
 .kiosk .panel { background: #152033; border: 1px solid #2c3f5c; padding: 20px; margin-top: 16px; }
 .kiosk .warn { background: #3a2418; border-color: #8a4b22; }
 .tech-img { max-width: 100%; max-height: 280px; margin: 8px 8px 0 0; border: 1px solid #3a4d6a; }
+.kiosk-part { display: flex; gap: 16px; align-items: flex-start; }
+.kiosk .part-photo {
+  width: 200px;
+  height: 150px;
+  object-fit: cover;
+  background: #1a273a;
+  border: 1px solid #3a4d6a;
+  flex-shrink: 0;
+}
+.kiosk .part-photo.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8a99ae;
+  font-size: 13px;
+}
+.queue-btn { display: inline-flex; align-items: center; gap: 10px; text-align: left; }
+.kiosk .part-thumb { width: 48px; height: 36px; }
 .kiosk .btn.ghost {
   color: #f3eee5;
   border-color: #5a6d88;
@@ -262,4 +280,13 @@ table.data tr.ok { background: #e7f4ea; }
   font-variant-numeric: tabular-nums;
 }
 .spec-grid { font-size: 14px; }
+.part-thumb {
+  width: 44px;
+  height: 34px;
+  object-fit: cover;
+  display: block;
+  background: #e8eef5;
+  border: 1px solid var(--line);
+}
+.part-thumb.empty { display: inline-block; }
 
