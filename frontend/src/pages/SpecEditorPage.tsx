@@ -648,7 +648,7 @@ export default function SpecEditorPage() {
         <thead>
           <tr>
             <th style={{ width: 36 }}></th>
-            <th style={{ width: 52 }}>Фото</th>
+            <th style={{ width: 80 }}>Фото</th>
             <th style={{ width: 40 }}>Ур.</th>
             <th>Номер</th>
             <th>Наименование</th>

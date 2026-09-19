@@ -105,10 +105,10 @@ function placeholderSvg(designation: string, name: string) {
   const safeName = name.replace(/[<>&]/g, '');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="240" height="180" viewBox="0 0 240 180">
-  <rect width="240" height="180" fill="#cfd8e6"/>
-  <rect x="14" y="14" width="212" height="152" fill="#f4efe4" stroke="#1b2a41" stroke-width="2"/>
-  <text x="120" y="84" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" fill="#1b2a41">${designation}</text>
-  <text x="120" y="118" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#5c6b7a">${safeName}</text>
+  <rect width="240" height="180" fill="#1b2a41"/>
+  <rect x="8" y="8" width="224" height="164" fill="#f4efe4"/>
+  <text x="120" y="100" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="700" fill="#1b2a41">${designation}</text>
+  <text x="120" y="138" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#5c6b7a">${safeName}</text>
 </svg>`;
 }
 
