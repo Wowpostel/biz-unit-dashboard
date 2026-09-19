@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../api';
+import { api, isOperatorOnly } from '../api';
 import { useAuth } from '../auth';
 
 type Post = { id: string; code: string; name: string };
@@ -199,9 +199,16 @@ export default function KioskPage() {
             {currentPost ? ` · пост ${currentPost.name}` : ''}
           </div>
         </div>
-        <button className="btn ghost" onClick={leave}>
-          Выйти
-        </button>
+        <div className="kiosk-actions">
+          {!isOperatorOnly(user?.role) && (
+            <button className="btn ghost" type="button" onClick={() => nav('/office')}>
+              В офис
+            </button>
+          )}
+          <button className="btn ghost" onClick={leave}>
+            Выйти
+          </button>
+        </div>
       </header>
 
       <div className="muted">Выберите пост смены</div>

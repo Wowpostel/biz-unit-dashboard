@@ -158,6 +158,7 @@ table.data tr.ok { background: #e7f4ea; }
   padding: 24px;
 }
 .kiosk header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.kiosk-actions { display: flex; gap: 10px; }
 .kiosk h1 { margin: 0; font-size: 28px; letter-spacing: .08em; }
 .kiosk .meta { color: #b7c2d4; }
 .posts { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0 28px; }
