@@ -724,9 +724,14 @@ export default function SpecEditorPage() {
                 <td>
                   <input
                     type="number"
-                    step="0.001"
-                    value={r.qty}
-                    onChange={(e) => patch(r.clientId, { qty: Number(e.target.value) })}
+                    min={1}
+                    step={1}
+                    inputMode="numeric"
+                    value={Number.isFinite(r.qty) ? Math.max(1, Math.round(r.qty)) : 1}
+                    onChange={(e) => {
+                      const n = parseInt(e.target.value, 10);
+                      patch(r.clientId, { qty: Number.isFinite(n) ? Math.max(1, n) : 1 });
+                    }}
                     readOnly={!canEdit}
                   />
                 </td>

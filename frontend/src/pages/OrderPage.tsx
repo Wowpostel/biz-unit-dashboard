@@ -132,7 +132,14 @@ export default function OrderPage() {
           </select>
           <label>
             N комплектов
-            <input type="number" min={1} value={qty} onChange={(e) => setQty(Number(e.target.value))} />
+            <input
+              type="number"
+              min={1}
+              step={1}
+              inputMode="numeric"
+              value={qty}
+              onChange={(e) => setQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+            />
           </label>
           <select value={extraItem} onChange={(e) => setExtraItem(e.target.value)}>
             <option value="">Без доп. штук</option>
@@ -145,8 +152,10 @@ export default function OrderPage() {
           <input
             type="number"
             min={1}
+            step={1}
+            inputMode="numeric"
             value={extraCount}
-            onChange={(e) => setExtraCount(Number(e.target.value))}
+            onChange={(e) => setExtraCount(Math.max(1, parseInt(e.target.value, 10) || 1))}
             title="Поштучно дополнительно"
           />
           <button className="btn amber">Запустить и печатать QR</button>

@@ -71,7 +71,14 @@ export default function OrdersPage() {
             </option>
           ))}
         </select>
-        <input type="number" min={1} value={qty} onChange={(e) => setQty(Number(e.target.value))} />
+        <input
+          type="number"
+          min={1}
+          step={1}
+          inputMode="numeric"
+          value={qty}
+          onChange={(e) => setQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+        />
         <button className="btn">Создать заказ</button>
       </form>
       {error && <p className="err">{error}</p>}
