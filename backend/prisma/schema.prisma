@@ -1,0 +1,371 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER
+  ADMIN
+  TECHNOLOGIST
+  DISPATCHER
+  OPERATOR
+}
+
+enum SpecItemKind {
+  ASSEMBLY
+  PART
+  MATERIAL
+}
+
+enum OrderStatus {
+  DRAFT
+  IN_PROGRESS
+  DONE
+}
+
+enum WorkItemStatus {
+  QUEUED
+  IN_WORK
+  DONE
+}
+
+enum OperationStatus {
+  PENDING
+  IN_WORK
+  DONE
+}
+
+enum TimeMode {
+  TIMER
+  MANUAL
+}
+
+model Tenant {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  name         String
+  photoBaseUrl String   @default("https://starksk1.synology.me/web_images/images")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  users          User[]
+  employees      Employee[]
+  posts          Post[]
+  equipment      Equipment[]
+  operationTypes OperationType[]
+  specs          Spec[]
+  specItems      SpecItem[]
+  partImages     PartImage[]
+  techOperations TechOperation[]
+  techImages     TechImage[]
+  orders         Order[]
+  orderLines     OrderLine[]
+  launches       Launch[]
+  workItems      WorkItem[]
+  workOperations WorkOperation[]
+  timeEntries    TimeEntry[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  email        String
+  passwordHash String
+  fullName     String
+  role         Role
+  isActive     Boolean  @default(true)
+  employeeId   String?  @unique
+  employee     Employee? @relation(fields: [employeeId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  launches       Launch[]
+  timeEntries    TimeEntry[]
+  activeOps      WorkOperation[] @relation("ActiveOperator")
+
+  @@unique([tenantId, email])
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  code        String
+  name        String
+  description String   @default("")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  employees      Employee[]
+  equipment      Equipment[]
+  operationTypes OperationType[]
+  techOperations TechOperation[]
+  workOperations WorkOperation[]
+  timeEntries    TimeEntry[]
+
+  @@unique([tenantId, code])
+}
+
+model Equipment {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  code        String
+  name        String
+  inventoryNo String   @default("")
+  postId      String?
+  post        Post?    @relation(fields: [postId], references: [id])
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([postId])
+}
+
+model Employee {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  fullName      String
+  personnelNo   String   @default("")
+  defaultPostId String?
+  defaultPost   Post?    @relation(fields: [defaultPostId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User?
+
+  @@index([tenantId])
+}
+
+model OperationType {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  code          String
+  name          String
+  defaultPostId String?
+  defaultPost   Post?    @relation(fields: [defaultPostId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  techOperations TechOperation[]
+
+  @@unique([tenantId, code])
+}
+
+model Spec {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  code        String
+  name        String
+  description String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items      SpecItem[]
+  orderLines OrderLine[]
+  launches   Launch[]
+
+  @@unique([tenantId, code])
+}
+
+model SpecItem {
+  id          String       @id @default(cuid())
+  tenantId    String
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  specId      String
+  spec        Spec         @relation(fields: [specId], references: [id], onDelete: Cascade)
+  parentId    String?
+  parent      SpecItem?    @relation("SpecTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children    SpecItem[]   @relation("SpecTree")
+  sortOrder   Int          @default(0)
+  designation String
+  name        String
+  qty         Decimal      @default(1) @db.Decimal(12, 3)
+  unit        String       @default("шт")
+  kind        SpecItemKind @default(PART)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  operations TechOperation[]
+  workItems  WorkItem[]
+
+  @@index([specId, parentId])
+  @@index([tenantId, designation])
+}
+
+model PartImage {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  designation  String
+  filename     String
+  mimeType     String
+  storagePath  String
+  publicPath   String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([tenantId, designation])
+  @@index([tenantId, designation])
+}
+
+model TechOperation {
+  id              String         @id @default(cuid())
+  tenantId        String
+  tenant          Tenant         @relation(fields: [tenantId], references: [id])
+  specItemId      String
+  specItem        SpecItem       @relation(fields: [specItemId], references: [id], onDelete: Cascade)
+  seq             Int
+  name            String
+  operationTypeId String?
+  operationType   OperationType? @relation(fields: [operationTypeId], references: [id])
+  postId          String?
+  post            Post?          @relation(fields: [postId], references: [id])
+  timeNormHours   Decimal        @default(0) @db.Decimal(12, 3)
+  instruction     String         @default("") @db.Text
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  images         TechImage[]
+  workOperations WorkOperation[]
+
+  @@index([specItemId, seq])
+}
+
+model TechImage {
+  id              String        @id @default(cuid())
+  tenantId        String
+  tenant          Tenant        @relation(fields: [tenantId], references: [id])
+  techOperationId String
+  techOperation   TechOperation @relation(fields: [techOperationId], references: [id], onDelete: Cascade)
+  filename        String
+  mimeType        String
+  storagePath     String
+  createdAt       DateTime      @default(now())
+}
+
+model Order {
+  id        String      @id @default(cuid())
+  tenantId  String
+  tenant    Tenant      @relation(fields: [tenantId], references: [id])
+  number    String
+  dueDate   DateTime
+  status    OrderStatus @default(DRAFT)
+  comment   String      @default("")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  lines     OrderLine[]
+  launches  Launch[]
+  workItems WorkItem[]
+
+  @@unique([tenantId, number])
+}
+
+model OrderLine {
+  id       String  @id @default(cuid())
+  tenantId String
+  tenant   Tenant  @relation(fields: [tenantId], references: [id])
+  orderId  String
+  order    Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  specId   String
+  spec     Spec    @relation(fields: [specId], references: [id])
+  qty      Decimal @db.Decimal(12, 3)
+}
+
+model Launch {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id])
+  specId       String
+  spec         Spec     @relation(fields: [specId], references: [id])
+  qty          Int
+  launchedAt   DateTime @default(now())
+  launchedById String
+  launchedBy   User     @relation(fields: [launchedById], references: [id])
+  comment      String   @default("")
+
+  workItems WorkItem[]
+}
+
+model WorkItem {
+  id         String         @id @default(cuid())
+  tenantId   String
+  tenant     Tenant         @relation(fields: [tenantId], references: [id])
+  launchId   String
+  launch     Launch         @relation(fields: [launchId], references: [id])
+  orderId    String
+  order      Order          @relation(fields: [orderId], references: [id])
+  specItemId String
+  specItem   SpecItem       @relation(fields: [specItemId], references: [id])
+  qrCode     String         @unique
+  pieceIndex Int            @default(1)
+  qty        Decimal        @default(1) @db.Decimal(12, 3)
+  isPiece    Boolean        @default(true)
+  status     WorkItemStatus @default(QUEUED)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  operations WorkOperation[]
+
+  @@index([tenantId, qrCode])
+  @@index([orderId])
+}
+
+model WorkOperation {
+  id               String          @id @default(cuid())
+  tenantId         String
+  tenant           Tenant          @relation(fields: [tenantId], references: [id])
+  workItemId       String
+  workItem         WorkItem        @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  techOperationId  String?
+  techOperation    TechOperation?  @relation(fields: [techOperationId], references: [id])
+  seq              Int
+  name             String
+  postId           String?
+  post             Post?           @relation(fields: [postId], references: [id])
+  timeNormHours    Decimal         @default(0) @db.Decimal(12, 3)
+  instruction      String          @default("") @db.Text
+  status           OperationStatus @default(PENDING)
+  activeStartAt    DateTime?
+  activeOperatorId String?
+  activeOperator   User?           @relation("ActiveOperator", fields: [activeOperatorId], references: [id])
+  postedHours      Decimal         @default(0) @db.Decimal(12, 3)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  timeEntries TimeEntry[]
+
+  @@index([workItemId, seq])
+  @@index([postId, status])
+}
+
+model TimeEntry {
+  id              String        @id @default(cuid())
+  tenantId        String
+  tenant          Tenant        @relation(fields: [tenantId], references: [id])
+  workOperationId String
+  workOperation   WorkOperation @relation(fields: [workOperationId], references: [id], onDelete: Cascade)
+  operatorId      String
+  operator        User          @relation(fields: [operatorId], references: [id])
+  postId          String
+  post            Post          @relation(fields: [postId], references: [id])
+  mode            TimeMode
+  startedAt       DateTime?
+  stoppedAt       DateTime?
+  hours           Decimal       @default(0) @db.Decimal(12, 3)
+  markedComplete  Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+}
