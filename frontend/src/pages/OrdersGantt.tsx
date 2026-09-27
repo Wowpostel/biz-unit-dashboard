@@ -14,17 +14,24 @@ export type GanttOrder = {
 
 const DAY = 86400000;
 
+function dayStart(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
 function utcMs(raw: string) {
-  const d = new Date(raw);
-  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  return dayStart(new Date(raw));
 }
 
 function iso(ms: number) {
-  return new Date(ms).toISOString().slice(0, 10);
+  const d = new Date(ms);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function weekday(ms: number) {
-  const d = new Date(ms).getUTCDay();
+  const d = new Date(ms).getDay();
   return d === 0 ? 7 : d;
 }
 
@@ -41,7 +48,7 @@ export default function OrdersGantt({ orders }: { orders: GanttOrder[] }) {
 
   const rows = [...orders].sort((a, b) => utcMs(a.createdAt) - utcMs(b.createdAt) || utcMs(a.dueDate) - utcMs(b.dueDate));
 
-  const today = utcMs(new Date().toISOString());
+  const today = dayStart(new Date());
   let min = today;
   let max = today;
   for (const o of rows) {
@@ -55,16 +62,23 @@ export default function OrdersGantt({ orders }: { orders: GanttOrder[] }) {
   max += DAY * 2;
 
   const days: number[] = [];
-  for (let t = min; t <= max; t += DAY) days.push(t);
+  for (let cursor = new Date(min); cursor.getTime() <= max; cursor.setDate(cursor.getDate() + 1)) {
+    days.push(dayStart(cursor));
+  }
   const colW = days.length > 50 ? 22 : days.length > 28 ? 28 : 36;
   const dense = days.length > 28;
   const trackW = days.length * colW;
 
   function left(ms: number) {
-    return ((ms - min) / DAY) * colW;
+    const idx = days.findIndex((d) => d === dayStart(new Date(ms)));
+    return Math.max(0, idx) * colW;
   }
   function width(from: number, to: number) {
-    return Math.max(colW, ((to - from) / DAY + 1) * colW);
+    const a = days.findIndex((d) => d === dayStart(new Date(from)));
+    const b = days.findIndex((d) => d === dayStart(new Date(to)));
+    const i = Math.max(0, a);
+    const j = Math.max(i, b);
+    return Math.max(colW, (j - i + 1) * colW);
   }
 
   return (
@@ -91,8 +105,8 @@ export default function OrdersGantt({ orders }: { orders: GanttOrder[] }) {
               const d = new Date(ms);
               const isToday = ms === today;
               const weekend = weekday(ms) >= 6;
-              const show = !dense || weekday(ms) === 1 || d.getUTCDate() === 1 || isToday;
-              const monthStart = d.getUTCDate() === 1 || ms === min;
+              const show = !dense || weekday(ms) === 1 || d.getDate() === 1 || isToday;
+              const monthStart = d.getDate() === 1 || ms === min;
               return (
                 <div
                   key={ms}
@@ -105,7 +119,7 @@ export default function OrdersGantt({ orders }: { orders: GanttOrder[] }) {
                       {d.toLocaleDateString('ru', { month: 'short' })}
                     </div>
                   )}
-                  {show ? d.getUTCDate() : ''}
+                  {show ? d.getDate() : ''}
                 </div>
               );
             })}
@@ -115,6 +129,9 @@ export default function OrdersGantt({ orders }: { orders: GanttOrder[] }) {
             const start = utcMs(o.createdAt);
             const due = utcMs(o.dueDate);
             const cls = o.status === 'DONE' ? 'done' : o.overdue ? 'late' : o.lag ? 'lag' : 'ok';
+            const afterDue = dayStart(
+              new Date(new Date(due).getFullYear(), new Date(due).getMonth(), new Date(due).getDate() + 1),
+            );
             const showSlip = o.overdue && today > due;
             return (
               <div key={o.id} className="gantt-row">
@@ -146,7 +163,7 @@ export default function OrdersGantt({ orders }: { orders: GanttOrder[] }) {
                   {showSlip && (
                     <div
                       className="gantt-slip"
-                      style={{ left: left(due + DAY), width: width(due + DAY, today) }}
+                      style={{ left: left(afterDue), width: width(afterDue, today) }}
                       title="Дни после срока"
                     />
                   )}

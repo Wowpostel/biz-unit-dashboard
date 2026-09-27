@@ -392,7 +392,7 @@ table.data tr.ok { background: #e7f4ea; }
 .gantt-tick.weekend, .gantt-cell.weekend { background: #f3eee6; }
 .gantt-tick.today, .gantt-cell.today {
   background: #f7e7c6;
-  box-shadow: inset 2px 0 0 var(--amber);
+  box-shadow: inset 2px 0 0 var(--amber), inset -2px 0 0 var(--amber);
 }
 .gantt-bar {
   position: absolute;
