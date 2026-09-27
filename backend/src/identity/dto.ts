@@ -14,7 +14,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { Role } from '@prisma/client';
+import { Role, StaffKind } from '@prisma/client';
 
 export class CreateUserDto {
   @IsEmail({ require_tld: false })
@@ -70,6 +70,14 @@ export class CreateEmployeeDto {
   @ValidateIf((_, v) => v !== null && v !== undefined)
   @IsString()
   defaultPostId?: string | null;
+
+  @IsOptional()
+  @IsEnum(StaffKind)
+  staffKind?: StaffKind;
+
+  @IsOptional()
+  @IsString()
+  jobTitle?: string;
 }
 
 export class PatchEmployeeDto {
@@ -141,4 +149,12 @@ export class PatchEmployeeDto {
   @IsOptional()
   @IsString()
   scheduleComment?: string;
+
+  @IsOptional()
+  @IsEnum(StaffKind)
+  staffKind?: StaffKind;
+
+  @IsOptional()
+  @IsString()
+  jobTitle?: string;
 }

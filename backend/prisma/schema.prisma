@@ -45,6 +45,21 @@ enum TimeMode {
   MANUAL
 }
 
+enum StaffKind {
+  WORKER
+  MASTER
+  SHOP_CHIEF
+  OFFICE
+}
+
+enum AttendanceStatus {
+  PLANNED
+  SHOWED
+  NO_SHOW
+  SUBSTITUTE
+  WALK_IN
+}
+
 model Tenant {
   id           String   @id @default(cuid())
   code         String   @unique
@@ -69,6 +84,7 @@ model Tenant {
   workItems      WorkItem[]
   workOperations WorkOperation[]
   timeEntries    TimeEntry[]
+  attendances    ShiftAttendance[]
 }
 
 model User {
@@ -131,29 +147,53 @@ model Equipment {
 }
 
 model Employee {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   tenantId      String
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
   fullName      String
-  personnelNo   String   @default("")
+  personnelNo   String    @default("")
+  jobTitle      String    @default("")
+  staffKind     StaffKind @default(WORKER)
   defaultPostId String?
-  defaultPost   Post?    @relation(fields: [defaultPostId], references: [id])
-  isActive      Boolean  @default(true)
-  scheduleKind  String   @default("WEEKDAYS")
-  weekDays      Int[]    @default([1, 2, 3, 4, 5])
-  shiftStart    String   @default("08:00")
-  shiftEnd      String   @default("17:00")
-  breakMinutes  Int      @default(60)
-  cycleWorkDays Int      @default(2)
-  cycleOffDays  Int      @default(2)
+  defaultPost   Post?     @relation(fields: [defaultPostId], references: [id])
+  isActive      Boolean   @default(true)
+  scheduleKind  String    @default("WEEKDAYS")
+  weekDays      Int[]     @default([1, 2, 3, 4, 5])
+  shiftStart    String    @default("08:00")
+  shiftEnd      String    @default("17:00")
+  breakMinutes  Int       @default(60)
+  cycleWorkDays Int       @default(2)
+  cycleOffDays  Int       @default(2)
   cycleAnchor   DateTime?
-  scheduleComment String @default("")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  scheduleComment String  @default("")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  user User?
+  user        User?
+  attendances ShiftAttendance[] @relation("ShiftPlanned")
+  coveredFor  ShiftAttendance[] @relation("ShiftActual")
 
   @@index([tenantId])
+}
+
+model ShiftAttendance {
+  id               String           @id @default(cuid())
+  tenantId         String
+  tenant           Tenant           @relation(fields: [tenantId], references: [id])
+  day              DateTime         @db.Date
+  employeeId       String
+  employee         Employee         @relation("ShiftPlanned", fields: [employeeId], references: [id], onDelete: Cascade)
+  scheduled        Boolean          @default(true)
+  status           AttendanceStatus @default(PLANNED)
+  actualEmployeeId String?
+  actualEmployee   Employee?        @relation("ShiftActual", fields: [actualEmployeeId], references: [id])
+  note             String           @default("")
+  markedAt         DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@unique([tenantId, day, employeeId])
+  @@index([tenantId, day])
 }
 
 model OperationType {

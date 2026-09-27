@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, Role } from '@prisma/client';
+import { Prisma, Role, StaffKind } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEmployeeDto, CreateUserDto, PatchEmployeeDto, PatchUserDto } from './dto';
@@ -82,6 +82,8 @@ export class IdentityService {
         fullName: dto.fullName.trim(),
         personnelNo: dto.personnelNo?.trim() ?? '',
         defaultPostId: dto.defaultPostId || null,
+        staffKind: dto.staffKind ?? StaffKind.WORKER,
+        jobTitle: dto.jobTitle?.trim() ?? '',
       },
       include: { defaultPost: true, user: true },
     });
@@ -112,6 +114,8 @@ export class IdentityService {
       data.cycleAnchor = parseAnchor(dto.cycleAnchor);
     }
     if (dto.scheduleComment !== undefined) data.scheduleComment = dto.scheduleComment.trim();
+    if (dto.staffKind !== undefined) data.staffKind = dto.staffKind;
+    if (dto.jobTitle !== undefined) data.jobTitle = dto.jobTitle.trim();
     const saved = await this.prisma.employee.update({
       where: { id },
       data,
@@ -149,6 +153,8 @@ export class IdentityService {
     defaultPostId: string | null;
     defaultPost: { id: string; name: string; code: string } | null;
     isActive: boolean;
+    staffKind: string;
+    jobTitle: string;
     scheduleKind: string;
     weekDays: number[];
     shiftStart: string;
@@ -168,6 +174,8 @@ export class IdentityService {
       defaultPostId: row.defaultPostId,
       defaultPost: row.defaultPost,
       isActive: row.isActive,
+      staffKind: row.staffKind,
+      jobTitle: row.jobTitle,
       scheduleKind: row.scheduleKind,
       weekDays: row.weekDays,
       shiftStart: row.shiftStart,

@@ -3,11 +3,14 @@ import { api } from '../api';
 import { useAuth } from '../auth';
 
 type Post = { id: string; name: string };
+type StaffKind = 'WORKER' | 'MASTER' | 'SHOP_CHIEF' | 'OFFICE';
 type ScheduleKind = 'WEEKDAYS' | 'TWO_TWO' | 'CUSTOM';
 type Employee = {
   id: string;
   fullName: string;
   personnelNo: string;
+  jobTitle: string;
+  staffKind: StaffKind;
   defaultPostId: string | null;
   defaultPost: Post | null;
   isActive: boolean;
@@ -28,6 +31,8 @@ type Employee = {
 type Draft = {
   fullName: string;
   personnelNo: string;
+  jobTitle: string;
+  staffKind: StaffKind;
   defaultPostId: string;
   isActive: boolean;
   scheduleKind: ScheduleKind;
@@ -40,6 +45,13 @@ type Draft = {
   cycleAnchor: string;
   scheduleComment: string;
 };
+
+const STAFF: { id: StaffKind; name: string }[] = [
+  { id: 'WORKER', name: 'Рабочий' },
+  { id: 'MASTER', name: 'Мастер' },
+  { id: 'SHOP_CHIEF', name: 'Нач. цеха' },
+  { id: 'OFFICE', name: 'ИТР / офис' },
+];
 
 const WEEK = [
   { d: 1, name: 'Пн' },
@@ -55,6 +67,8 @@ function toDraft(e: Employee): Draft {
   return {
     fullName: e.fullName,
     personnelNo: e.personnelNo,
+    jobTitle: e.jobTitle ?? '',
+    staffKind: e.staffKind || 'WORKER',
     defaultPostId: e.defaultPostId ?? '',
     isActive: e.isActive,
     scheduleKind: e.scheduleKind,
@@ -77,6 +91,8 @@ export default function EmployeesPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [fullName, setFullName] = useState('');
   const [personnelNo, setPersonnelNo] = useState('');
+  const [jobTitle, setJobTitle] = useState('');
+  const [staffKind, setStaffKind] = useState<StaffKind>('WORKER');
   const [defaultPostId, setDefaultPostId] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -105,11 +121,15 @@ export default function EmployeesPage() {
         body: JSON.stringify({
           fullName,
           personnelNo,
+          jobTitle,
+          staffKind,
           defaultPostId: defaultPostId || null,
         }),
       });
       setFullName('');
       setPersonnelNo('');
+      setJobTitle('');
+      setStaffKind('WORKER');
       setDefaultPostId('');
       await load();
       setEditingId(created.id);
@@ -136,6 +156,8 @@ export default function EmployeesPage() {
         body: JSON.stringify({
           fullName: draft.fullName,
           personnelNo: draft.personnelNo,
+          jobTitle: draft.jobTitle,
+          staffKind: draft.staffKind,
           defaultPostId: draft.defaultPostId || null,
           isActive: draft.isActive,
           scheduleKind: draft.scheduleKind,
@@ -190,14 +212,22 @@ export default function EmployeesPage() {
         <div>
           <h1>Сотрудники</h1>
           <p>
-            Правка созданных карточек и график работы: пятидневка, два через два или свои дни, часы
-            смены и перерыв. На терминале оператор всё равно выбирает пост смены.
+            Рабочие, мастера, нач. цеха и ИТР — в одном списке: тип и должность, не отдельная учётка.
+            График говорит, кто должен выйти. Кто вышел по факту — на экране «Смена».
           </p>
         </div>
       </div>
       {canWrite && (
         <form className="form-row" onSubmit={onSubmit}>
           <input placeholder="ФИО" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+          <input placeholder="Должность" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
+          <select value={staffKind} onChange={(e) => setStaffKind(e.target.value as StaffKind)}>
+            {STAFF.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
           <input placeholder="Таб. №" value={personnelNo} onChange={(e) => setPersonnelNo(e.target.value)} />
           <select value={defaultPostId} onChange={(e) => setDefaultPostId(e.target.value)}>
             <option value="">Пост не задан</option>
@@ -216,6 +246,7 @@ export default function EmployeesPage() {
         <thead>
           <tr>
             <th>ФИО</th>
+            <th>Должность</th>
             <th>Таб. №</th>
             <th>Пост</th>
             <th>График</th>
@@ -229,6 +260,10 @@ export default function EmployeesPage() {
               <td>
                 {r.fullName}
                 {!r.isActive && <span className="muted"> · неактивен</span>}
+              </td>
+              <td>
+                {STAFF.find((s) => s.id === r.staffKind)?.name ?? 'Рабочий'}
+                {r.jobTitle ? ` · ${r.jobTitle}` : ''}
               </td>
               <td>{r.personnelNo || '—'}</td>
               <td>{r.defaultPost?.name ?? '—'}</td>
@@ -262,6 +297,21 @@ export default function EmployeesPage() {
               value={draft.fullName}
               onChange={(e) => setDraft({ ...draft, fullName: e.target.value })}
             />
+            <input
+              placeholder="Должность"
+              value={draft.jobTitle}
+              onChange={(e) => setDraft({ ...draft, jobTitle: e.target.value })}
+            />
+            <select
+              value={draft.staffKind}
+              onChange={(e) => setDraft({ ...draft, staffKind: e.target.value as StaffKind })}
+            >
+              {STAFF.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
             <input
               placeholder="Таб. №"
               value={draft.personnelNo}

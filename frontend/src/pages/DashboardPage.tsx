@@ -39,6 +39,14 @@ type Overview = {
     currentOp: string | null;
     postName: string | null;
   }[];
+  shiftToday?: {
+    date: string;
+    planned: number;
+    here: number;
+    covered: number;
+    missing: number;
+    unmarked: number;
+  };
 };
 
 const statusRu: Record<string, string> = {
@@ -65,7 +73,7 @@ export default function DashboardPage() {
       <div className="page-h">
         <div>
           <h1>Диспетчер</h1>
-          <p>Своевременность заказов, что сейчас на станках, просрочка.</p>
+          <p>Своевременность заказов, явка смены, что сейчас на станках, просрочка.</p>
         </div>
       </div>
       <div className="grid-3">
@@ -82,6 +90,21 @@ export default function DashboardPage() {
           <b>{data.overdue.length}</b>
         </div>
       </div>
+      {data.shiftToday && (
+        <div className="card" style={{ marginTop: 16 }}>
+          <h2>Смена сегодня</h2>
+          <p>
+            По графику <strong>{data.shiftToday.planned}</strong>, вышли{' '}
+            <strong>{data.shiftToday.here}</strong>
+            {data.shiftToday.covered ? `, подмен ${data.shiftToday.covered}` : ''}, не отмечено{' '}
+            <strong>{data.shiftToday.unmarked}</strong>
+            {data.shiftToday.missing ? `, нет ${data.shiftToday.missing}` : ''}.
+          </p>
+          <Link to="/office/shift" className="btn amber">
+            Кто в смене и явка
+          </Link>
+        </div>
+      )}
 
       <div className="card" style={{ marginTop: 16 }}>
         <h2>Заказы</h2>

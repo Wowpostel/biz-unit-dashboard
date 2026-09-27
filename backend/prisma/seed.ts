@@ -3,6 +3,7 @@ import {
   PrismaClient,
   Role,
   SpecItemKind,
+  StaffKind,
   WorkItemStatus,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
@@ -318,6 +319,108 @@ async function ensureKdSample(tenantId: string, tenantCode: string) {
   });
 }
 
+async function ensureShopStaff(tenantId: string) {
+  const posts = await prisma.post.findMany({ where: { tenantId } });
+  const byCode = Object.fromEntries(posts.map((p) => [p.code, p]));
+  const tok = byCode['ТОКАР']?.id ?? null;
+  const frez = byCode['ФРЕЗ']?.id ?? null;
+  const sbor = byCode['СБОР']?.id ?? null;
+
+  const upsert = async (row: {
+    personnelNo: string;
+    fullName: string;
+    jobTitle: string;
+    staffKind: StaffKind;
+    defaultPostId: string | null;
+    scheduleKind?: string;
+    weekDays?: number[];
+    shiftStart?: string;
+    shiftEnd?: string;
+    scheduleComment?: string;
+  }) => {
+    const data = {
+      fullName: row.fullName,
+      jobTitle: row.jobTitle,
+      staffKind: row.staffKind,
+      defaultPostId: row.defaultPostId,
+      scheduleKind: row.scheduleKind ?? 'WEEKDAYS',
+      weekDays: row.weekDays ?? [1, 2, 3, 4, 5],
+      shiftStart: row.shiftStart ?? '08:00',
+      shiftEnd: row.shiftEnd ?? '17:00',
+      scheduleComment: row.scheduleComment ?? '',
+      isActive: true,
+    };
+    const existing = await prisma.employee.findFirst({
+      where: { tenantId, personnelNo: row.personnelNo },
+    });
+    if (existing) {
+      await prisma.employee.update({
+        where: { id: existing.id },
+        data: { ...data, weekDays: { set: data.weekDays } },
+      });
+      return;
+    }
+    await prisma.employee.create({
+      data: { tenantId, personnelNo: row.personnelNo, ...data },
+    });
+  };
+
+  await upsert({
+    personnelNo: 'НЦ-001',
+    fullName: 'Кузнецов Андрей Викторович',
+    jobTitle: 'Начальник цеха',
+    staffKind: StaffKind.SHOP_CHIEF,
+    defaultPostId: sbor,
+  });
+  await upsert({
+    personnelNo: 'М-Т01',
+    fullName: 'Николаев Игорь Степанович',
+    jobTitle: 'Мастер токарного участка',
+    staffKind: StaffKind.MASTER,
+    defaultPostId: tok,
+  });
+  await upsert({
+    personnelNo: 'М-Ф01',
+    fullName: 'Орлова Марина Сергеевна',
+    jobTitle: 'Мастер фрезерного участка',
+    staffKind: StaffKind.MASTER,
+    defaultPostId: frez,
+  });
+  await upsert({
+    personnelNo: 'Т-014',
+    fullName: 'Иванов Сергей Петрович',
+    jobTitle: 'Токарь',
+    staffKind: StaffKind.WORKER,
+    defaultPostId: tok,
+  });
+  await upsert({
+    personnelNo: 'Ф-008',
+    fullName: 'Петрова Анна Игоревна',
+    jobTitle: 'Фрезеровщик',
+    staffKind: StaffKind.WORKER,
+    defaultPostId: frez,
+  });
+  await upsert({
+    personnelNo: 'С-003',
+    fullName: 'Сидоров Павел Алексеевич',
+    jobTitle: 'Слесарь-сборщик',
+    staffKind: StaffKind.WORKER,
+    defaultPostId: sbor,
+  });
+  await upsert({
+    personnelNo: 'Т-Н20',
+    fullName: 'Козлов Дмитрий Юрьевич',
+    jobTitle: 'Токарь (ночная)',
+    staffKind: StaffKind.WORKER,
+    defaultPostId: tok,
+    scheduleKind: 'CUSTOM',
+    weekDays: [1, 2, 3, 4, 5, 6, 7],
+    shiftStart: '20:00',
+    shiftEnd: '08:00',
+    scheduleComment: 'Ночная смена, все дни. Для срочных подмен днём — отметить на экране «Смена».',
+  });
+}
+
 async function main() {
   const existing = await prisma.tenant.findUnique({ where: { code: 'pilot' } });
   if (existing) {
@@ -342,10 +445,11 @@ async function main() {
         data: { defaultPostId: byCode['СБОР'].id },
       });
     }
+    await ensureShopStaff(existing.id);
     await ensurePilotLogins(existing.id);
     await ensurePartPlaceholders(existing.id, existing.code);
     await ensureKdSample(existing.id, existing.code);
-    console.log('Пилот уже заполнен, дописали суперпользователя, фото КД 0350166 и оборудование при необходимости.');
+    console.log('Пилот уже заполнен, дописали нач. цеха/мастеров, явку смены, суперпользователя и фото КД 0350166.');
     return;
   }
 
@@ -400,32 +504,7 @@ async function main() {
   };
 
   await ensureEquipment(tenant.id, posts);
-
-  await prisma.employee.create({
-    data: {
-      tenantId: tenant.id,
-      fullName: 'Иванов Сергей Петрович',
-      personnelNo: 'Т-014',
-      defaultPostId: posts.tok.id,
-    },
-  });
-  await prisma.employee.create({
-    data: {
-      tenantId: tenant.id,
-      fullName: 'Петрова Анна Игоревна',
-      personnelNo: 'Ф-008',
-      defaultPostId: posts.frez.id,
-    },
-  });
-  await prisma.employee.create({
-    data: {
-      tenantId: tenant.id,
-      fullName: 'Сидоров Павел Алексеевич',
-      personnelNo: 'С-003',
-      defaultPostId: posts.sbor.id,
-    },
-  });
-
+  await ensureShopStaff(tenant.id);
   await ensurePilotLogins(tenant.id);
   const dispatcher = await prisma.user.findFirstOrThrow({
     where: { tenantId: tenant.id, email: 'disp@erpevv.local' },

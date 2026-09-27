@@ -108,6 +108,7 @@ a { color: inherit; }
 .btn.amber { background: var(--amber); color: #1a1308; font-weight: 700; }
 .btn.danger { background: var(--bad); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
+a.btn { text-decoration: none; display: inline-block; }
 
 .card {
   background: var(--card);
@@ -141,7 +142,27 @@ table.data tr.ok { background: #e7f4ea; }
 .stat b { display: block; font-size: 28px; }
 .stat span { color: var(--muted); font-size: 13px; }
 
-.form-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: flex-end; }
+.att-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.att-btn {
+  min-width: 84px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  cursor: pointer;
+  font-weight: 700;
+}
+.att-btn.on { background: var(--good); color: #fff; border-color: var(--good); }
+.att-btn.off { background: var(--bad); color: #fff; border-color: var(--bad); }
+.att-btn.warn { background: var(--warn); color: #fff; border-color: var(--warn); }
+.att-row select { min-width: 180px; }
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+  margin-bottom: 16px;
+}
 .form-row label {
   display: flex;
   flex-direction: column;

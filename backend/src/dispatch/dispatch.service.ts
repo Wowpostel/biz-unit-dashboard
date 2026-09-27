@@ -2,10 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { OperationStatus, WorkItemStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { num } from '../common/util';
+import { ShiftBoardService } from './shift-board.service';
 
 @Injectable()
 export class DispatchService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly shifts: ShiftBoardService,
+  ) {}
 
   async overview(tenantId: string) {
     const now = new Date();
@@ -124,6 +128,8 @@ export class DispatchService {
       orderBy: { order: { dueDate: 'asc' } },
     });
 
+    const shiftToday = await this.shifts.board(tenantId);
+
     return {
       generatedAt: now,
       orders: orderRows,
@@ -141,6 +147,14 @@ export class DispatchService {
           postName: current?.post?.name ?? null,
         };
       }),
+      shiftToday: {
+        date: shiftToday.date,
+        planned: shiftToday.counts.planned,
+        here: shiftToday.counts.here,
+        covered: shiftToday.counts.covered,
+        missing: shiftToday.counts.missing,
+        unmarked: shiftToday.counts.unmarked,
+      },
     };
   }
 }

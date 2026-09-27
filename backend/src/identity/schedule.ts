@@ -11,28 +11,24 @@ export function isoWeekdayUtc(at = new Date()) {
   return d === 0 ? 7 : d;
 }
 
-export function parseAnchor(raw?: string | null) {
-  if (!raw) return null;
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw.trim());
-  if (!m) return null;
-  const y = Number(m[1]);
-  const mo = Number(m[2]);
-  const da = Number(m[3]);
-  const dt = new Date(Date.UTC(y, mo - 1, da));
-  if (Number.isNaN(dt.getTime())) return null;
-  return dt;
+export function utcDay(at: Date) {
+  return new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()));
 }
 
-export function onShiftToday(row: {
-  isActive: boolean;
-  scheduleKind: string;
-  weekDays: number[];
-  cycleWorkDays: number;
-  cycleOffDays: number;
-  cycleAnchor: Date | null;
-}) {
+export function onShiftOnDate(
+  row: {
+    isActive: boolean;
+    scheduleKind: string;
+    weekDays: number[];
+    cycleWorkDays: number;
+    cycleOffDays: number;
+    cycleAnchor: Date | null;
+  },
+  day: Date,
+) {
   if (!row.isActive) return false;
   const kind = row.scheduleKind as ScheduleKind;
+  const dayUtc = utcDay(day);
   if (kind === 'TWO_TWO') {
     if (!row.cycleAnchor) return null;
     const work = Math.max(1, row.cycleWorkDays || 2);
@@ -43,14 +39,36 @@ export function onShiftToday(row: {
       row.cycleAnchor.getUTCMonth(),
       row.cycleAnchor.getUTCDate(),
     );
-    const now = new Date();
-    const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const today = dayUtc.getTime();
     const diff = Math.floor((today - start) / 86400000);
     const pos = ((diff % cycle) + cycle) % cycle;
     return pos < work;
   }
   const days = row.weekDays?.length ? row.weekDays : [1, 2, 3, 4, 5];
-  return days.includes(isoWeekdayUtc());
+  return days.includes(isoWeekdayUtc(dayUtc));
+}
+
+export function onShiftToday(row: {
+  isActive: boolean;
+  scheduleKind: string;
+  weekDays: number[];
+  cycleWorkDays: number;
+  cycleOffDays: number;
+  cycleAnchor: Date | null;
+}) {
+  return onShiftOnDate(row, new Date());
+}
+
+export function parseAnchor(raw?: string | null) {
+  if (!raw) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw.trim());
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const da = Number(m[3]);
+  const dt = new Date(Date.UTC(y, mo - 1, da));
+  if (Number.isNaN(dt.getTime())) return null;
+  return dt;
 }
 
 export function scheduleLabel(row: {
