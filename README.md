@@ -4,17 +4,32 @@
 
 Репозиторий раньше содержал прототип «Business Unit Dashboard». Этот домен **не развивается**. Ниже — новый модульный монолит (NestJS + Prisma + PostgreSQL + React/Vite).
 
-## Быстрый старт (Docker Compose)
+## Запуск у себя на компьютере
+
+Облачный Try Live тормозит — работайте локально. Нужен **Docker Desktop** (должен быть запущен).
 
 ```bash
+git fetch origin
+git checkout cursor/erpevv-first-slice-455b
+git pull origin cursor/erpevv-first-slice-455b
 docker compose up --build
 ```
 
-Откройте http://localhost:8080
+На Windows можно двойным щелчком `start-local.bat`.
 
-При первом запуске API применит схему и заполнит пилотного тенанта.
+Когда в логе появятся `web` и `api`, откройте в Chrome:
 
-## Локальная разработка
+- офис: http://localhost:5173
+- киоск: http://localhost:5173/kiosk
+- запасной адрес: http://localhost:8080
+
+Если 5173 занят другим процессом — только http://localhost:8080.
+
+Первый запуск соберёт образы и заполнит пилотные данные. Вход: `super@erpevv.local` / `Super123!`
+
+Остановка: `Ctrl+C`, затем при необходимости `docker compose down`.
+
+## Локальная разработка без Docker
 
 PostgreSQL: база `erpevv`, пользователь `erpevv` / `erpevv`.
 
