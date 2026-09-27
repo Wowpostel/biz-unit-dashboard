@@ -138,6 +138,16 @@ model Employee {
   personnelNo   String   @default("")
   defaultPostId String?
   defaultPost   Post?    @relation(fields: [defaultPostId], references: [id])
+  isActive      Boolean  @default(true)
+  scheduleKind  String   @default("WEEKDAYS")
+  weekDays      Int[]    @default([1, 2, 3, 4, 5])
+  shiftStart    String   @default("08:00")
+  shiftEnd      String   @default("17:00")
+  breakMinutes  Int      @default(60)
+  cycleWorkDays Int      @default(2)
+  cycleOffDays  Int      @default(2)
+  cycleAnchor   DateTime?
+  scheduleComment String @default("")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

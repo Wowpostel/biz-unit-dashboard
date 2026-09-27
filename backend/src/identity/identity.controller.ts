@@ -44,13 +44,13 @@ export class IdentityController {
     return this.identity.listEmployees(user.tenantId);
   }
 
-  @Roles(Role.ADMIN, Role.TECHNOLOGIST)
+  @Roles(Role.ADMIN, Role.TECHNOLOGIST, Role.DISPATCHER)
   @Post('employees')
   createEmployee(@CurrentUser() user: AuthUser, @Body() dto: CreateEmployeeDto) {
     return this.identity.createEmployee(user.tenantId, dto);
   }
 
-  @Roles(Role.ADMIN, Role.TECHNOLOGIST)
+  @Roles(Role.ADMIN, Role.TECHNOLOGIST, Role.DISPATCHER)
   @Patch('employees/:id')
   patchEmployee(
     @CurrentUser() user: AuthUser,

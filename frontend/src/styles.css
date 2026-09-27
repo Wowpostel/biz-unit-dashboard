@@ -141,7 +141,16 @@ table.data tr.ok { background: #e7f4ea; }
 .stat b { display: block; font-size: 28px; }
 .stat span { color: var(--muted); font-size: 13px; }
 
-.form-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.form-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: flex-end; }
+.form-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.form-row label input,
+.form-row label select { min-width: 140px; }
 .form-row input, .form-row select, .form-row textarea {
   padding: 8px 10px;
   border: 1px solid var(--line);

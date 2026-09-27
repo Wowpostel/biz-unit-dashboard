@@ -7,6 +7,7 @@ import { Prisma, Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEmployeeDto, CreateUserDto, PatchEmployeeDto, PatchUserDto } from './dto';
+import { normalizeWeekDays, onShiftToday, parseAnchor, scheduleLabel } from './schedule';
 
 @Injectable()
 export class IdentityService {
@@ -64,16 +65,18 @@ export class IdentityService {
   }
 
   listEmployees(tenantId: string) {
-    return this.prisma.employee.findMany({
-      where: { tenantId },
-      include: { defaultPost: true, user: true },
-      orderBy: { fullName: 'asc' },
-    });
+    return this.prisma.employee
+      .findMany({
+        where: { tenantId },
+        include: { defaultPost: true, user: true },
+        orderBy: { fullName: 'asc' },
+      })
+      .then((rows) => rows.map((r) => this.serializeEmployee(r)));
   }
 
   async createEmployee(tenantId: string, dto: CreateEmployeeDto) {
     if (dto.defaultPostId) await this.ensurePost(tenantId, dto.defaultPostId);
-    return this.prisma.employee.create({
+    const row = await this.prisma.employee.create({
       data: {
         tenantId,
         fullName: dto.fullName.trim(),
@@ -82,21 +85,39 @@ export class IdentityService {
       },
       include: { defaultPost: true, user: true },
     });
+    return this.serializeEmployee(row);
   }
 
   async patchEmployee(tenantId: string, id: string, dto: PatchEmployeeDto) {
     const row = await this.prisma.employee.findFirst({ where: { id, tenantId } });
     if (!row) throw new NotFoundException('Сотрудник не найден');
     if (dto.defaultPostId) await this.ensurePost(tenantId, dto.defaultPostId);
-    return this.prisma.employee.update({
+    const data: Prisma.EmployeeUpdateInput = {};
+    if (dto.fullName !== undefined) data.fullName = dto.fullName.trim();
+    if (dto.personnelNo !== undefined) data.personnelNo = dto.personnelNo.trim();
+    if (dto.defaultPostId !== undefined) {
+      data.defaultPost = dto.defaultPostId
+        ? { connect: { id: dto.defaultPostId } }
+        : { disconnect: true };
+    }
+    if (dto.isActive !== undefined) data.isActive = dto.isActive;
+    if (dto.scheduleKind !== undefined) data.scheduleKind = dto.scheduleKind;
+    if (dto.weekDays !== undefined) data.weekDays = { set: normalizeWeekDays(dto.weekDays) };
+    if (dto.shiftStart !== undefined) data.shiftStart = dto.shiftStart;
+    if (dto.shiftEnd !== undefined) data.shiftEnd = dto.shiftEnd;
+    if (dto.breakMinutes !== undefined) data.breakMinutes = dto.breakMinutes;
+    if (dto.cycleWorkDays !== undefined) data.cycleWorkDays = dto.cycleWorkDays;
+    if (dto.cycleOffDays !== undefined) data.cycleOffDays = dto.cycleOffDays;
+    if (dto.cycleAnchor !== undefined) {
+      data.cycleAnchor = parseAnchor(dto.cycleAnchor);
+    }
+    if (dto.scheduleComment !== undefined) data.scheduleComment = dto.scheduleComment.trim();
+    const saved = await this.prisma.employee.update({
       where: { id },
-      data: {
-        fullName: dto.fullName?.trim(),
-        personnelNo: dto.personnelNo?.trim(),
-        defaultPostId: dto.defaultPostId === undefined ? undefined : dto.defaultPostId || null,
-      },
+      data,
       include: { defaultPost: true, user: true },
     });
+    return this.serializeEmployee(saved);
   }
 
   async removeEmployee(tenantId: string, id: string) {
@@ -119,5 +140,46 @@ export class IdentityService {
   private async ensurePost(tenantId: string, id: string) {
     const row = await this.prisma.post.findFirst({ where: { id, tenantId } });
     if (!row) throw new BadRequestException('Пост не найден');
+  }
+
+  private serializeEmployee(row: {
+    id: string;
+    fullName: string;
+    personnelNo: string;
+    defaultPostId: string | null;
+    defaultPost: { id: string; name: string; code: string } | null;
+    isActive: boolean;
+    scheduleKind: string;
+    weekDays: number[];
+    shiftStart: string;
+    shiftEnd: string;
+    breakMinutes: number;
+    cycleWorkDays: number;
+    cycleOffDays: number;
+    cycleAnchor: Date | null;
+    scheduleComment: string;
+    user: { id: string; email: string } | null;
+  }) {
+    const today = onShiftToday(row);
+    return {
+      id: row.id,
+      fullName: row.fullName,
+      personnelNo: row.personnelNo,
+      defaultPostId: row.defaultPostId,
+      defaultPost: row.defaultPost,
+      isActive: row.isActive,
+      scheduleKind: row.scheduleKind,
+      weekDays: row.weekDays,
+      shiftStart: row.shiftStart,
+      shiftEnd: row.shiftEnd,
+      breakMinutes: row.breakMinutes,
+      cycleWorkDays: row.cycleWorkDays,
+      cycleOffDays: row.cycleOffDays,
+      cycleAnchor: row.cycleAnchor ? row.cycleAnchor.toISOString().slice(0, 10) : null,
+      scheduleComment: row.scheduleComment,
+      loginEmail: row.user?.email ?? null,
+      scheduleLabel: scheduleLabel(row),
+      onShiftToday: today,
+    };
   }
 }
