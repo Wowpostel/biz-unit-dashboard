@@ -112,25 +112,32 @@ export class ShiftBoardService {
       },
     });
     if (dto.status === AttendanceStatus.SUBSTITUTE && dto.actualEmployeeId) {
-      await this.prisma.shiftAttendance.upsert({
-        where: {
-          tenantId_day_employeeId: { tenantId, day, employeeId: dto.actualEmployeeId },
-        },
-        create: {
-          tenantId,
-          day,
-          employeeId: dto.actualEmployeeId,
-          scheduled: false,
-          status: AttendanceStatus.WALK_IN,
-          note: `Подмена за ${emp.fullName}`,
-          markedAt: new Date(),
-        },
-        update: {
-          status: AttendanceStatus.WALK_IN,
-          note: `Подмена за ${emp.fullName}`,
-          markedAt: new Date(),
-        },
+      const sub = await this.prisma.employee.findFirst({
+        where: { id: dto.actualEmployeeId, tenantId },
       });
+      if (sub) {
+        const subScheduled = onShiftOnDate(sub, day) === true;
+        await this.prisma.shiftAttendance.upsert({
+          where: {
+            tenantId_day_employeeId: { tenantId, day, employeeId: sub.id },
+          },
+          create: {
+            tenantId,
+            day,
+            employeeId: sub.id,
+            scheduled: subScheduled,
+            status: subScheduled ? AttendanceStatus.SHOWED : AttendanceStatus.WALK_IN,
+            note: `Подмена за ${emp.fullName}`,
+            markedAt: new Date(),
+          },
+          update: {
+            status: subScheduled ? AttendanceStatus.SHOWED : AttendanceStatus.WALK_IN,
+            note: `Подмена за ${emp.fullName}`,
+            markedAt: new Date(),
+            scheduled: subScheduled,
+          },
+        });
+      }
     }
     return this.board(tenantId, dto.date);
   }
