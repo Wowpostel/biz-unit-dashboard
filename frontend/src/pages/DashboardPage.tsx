@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
+import OrdersGantt from './OrdersGantt';
 
 type Overview = {
   generatedAt: string;
   orders: {
     id: string;
     number: string;
+    createdAt: string;
     dueDate: string;
     status: string;
     specs: string[];
@@ -73,7 +75,7 @@ export default function DashboardPage() {
       <div className="page-h">
         <div>
           <h1>Диспетчер</h1>
-          <p>Своевременность заказов, явка смены, что сейчас на станках, просрочка.</p>
+          <p>Своевременность заказов, график-таймлайн, явка смены, что сейчас на станках, просрочка.</p>
         </div>
       </div>
       <div className="grid-3">
@@ -105,6 +107,14 @@ export default function DashboardPage() {
           </Link>
         </div>
       )}
+
+      <div className="card" style={{ marginTop: 16 }}>
+        <div className="page-h" style={{ marginBottom: 12 }}>
+          <h2 style={{ margin: 0 }}>График заказов</h2>
+          <Link to="/office/plan">На весь экран</Link>
+        </div>
+        <OrdersGantt orders={data.orders} />
+      </div>
 
       <div className="card" style={{ marginTop: 16 }}>
         <h2>Заказы</h2>

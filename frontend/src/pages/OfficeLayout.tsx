@@ -23,6 +23,7 @@ export default function OfficeLayout() {
               Дашборд
             </NavLink>
           )}
+          {disp && <NavLink to="/office/plan">График</NavLink>}
           {disp && <NavLink to="/office/shift">Смена</NavLink>}
           {disp && <NavLink to="/office/orders">Заказы</NavLink>}
           <NavLink to="/office/specs">Спецификации</NavLink>

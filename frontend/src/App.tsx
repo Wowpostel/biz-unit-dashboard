@@ -4,6 +4,7 @@ import { isOperatorOnly } from './api';
 import LoginPage from './pages/LoginPage';
 import OfficeLayout from './pages/OfficeLayout';
 import DashboardPage from './pages/DashboardPage';
+import PlanPage from './pages/PlanPage';
 import ShiftBoardPage from './pages/ShiftBoardPage';
 import PostsPage from './pages/PostsPage';
 import EquipmentPage from './pages/EquipmentPage';
@@ -53,6 +54,7 @@ export default function App() {
       <Route path="/kiosk" element={<Gate />} />
       <Route path="/office" element={<Gate office />}>
         <Route index element={<OfficeHome />} />
+        <Route path="plan" element={<PlanPage />} />
         <Route path="shift" element={<ShiftBoardPage />} />
         <Route path="posts" element={<PostsPage />} />
         <Route path="equipment" element={<EquipmentPage />} />

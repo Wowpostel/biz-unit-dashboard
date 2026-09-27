@@ -26,7 +26,11 @@ export class DispatchService {
       const ops = order.workItems.flatMap((w) => w.operations);
       const total = ops.length;
       const done = ops.filter((o) => o.status === OperationStatus.DONE).length;
-      const pct = total ? Math.round((done / total) * 100) : 0;
+      const pct = total
+        ? Math.round((done / total) * 100)
+        : order.status === 'DONE'
+          ? 100
+          : 0;
       const due = order.dueDate.getTime();
       const created = order.createdAt.getTime();
       const span = Math.max(due - created, 1);
@@ -39,6 +43,7 @@ export class DispatchService {
       return {
         id: order.id,
         number: order.number,
+        createdAt: order.createdAt,
         dueDate: order.dueDate,
         status: order.status,
         comment: order.comment,

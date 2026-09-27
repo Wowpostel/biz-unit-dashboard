@@ -1,5 +1,6 @@
 import {
   OperationStatus,
+  OrderStatus,
   PrismaClient,
   Role,
   SpecItemKind,
@@ -421,6 +422,63 @@ async function ensureShopStaff(tenantId: string) {
   });
 }
 
+async function ensureGanttDemoOrders(tenantId: string) {
+  const spec = await prisma.spec.findFirst({ where: { tenantId, code: 'РЦ-12' } });
+  if (!spec) return;
+  const day = (offset: number) => {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    d.setDate(d.getDate() + offset);
+    return d;
+  };
+  const ensure = async (row: {
+    number: string;
+    dueOffset: number;
+    createdOffset: number;
+    status: OrderStatus;
+    comment: string;
+    qty: number;
+  }) => {
+    const found = await prisma.order.findFirst({ where: { tenantId, number: row.number } });
+    if (found) return;
+    await prisma.order.create({
+      data: {
+        tenantId,
+        number: row.number,
+        dueDate: day(row.dueOffset),
+        createdAt: day(row.createdOffset),
+        status: row.status,
+        comment: row.comment,
+        lines: { create: { tenantId, specId: spec.id, qty: row.qty } },
+      },
+    });
+  };
+  await ensure({
+    number: 'З-0999',
+    createdOffset: -30,
+    dueOffset: -10,
+    status: OrderStatus.DONE,
+    comment: 'Закрытый заказ для графика Ганта',
+    qty: 1,
+  });
+  await ensure({
+    number: 'З-1002',
+    createdOffset: -4,
+    dueOffset: 21,
+    status: OrderStatus.IN_PROGRESS,
+    comment: 'Длинный заказ на графике',
+    qty: 1,
+  });
+  await ensure({
+    number: 'З-1003',
+    createdOffset: 0,
+    dueOffset: 35,
+    status: OrderStatus.DRAFT,
+    comment: 'Черновик с дальним сроком',
+    qty: 3,
+  });
+}
+
 async function main() {
   const existing = await prisma.tenant.findUnique({ where: { code: 'pilot' } });
   if (existing) {
@@ -449,7 +507,8 @@ async function main() {
     await ensurePilotLogins(existing.id);
     await ensurePartPlaceholders(existing.id, existing.code);
     await ensureKdSample(existing.id, existing.code);
-    console.log('Пилот уже заполнен, дописали нач. цеха/мастеров, явку смены, суперпользователя и фото КД 0350166.');
+    await ensureGanttDemoOrders(existing.id);
+    console.log('Пилот уже заполнен, дописали график заказов, нач. цеха/мастеров, явку смены и фото КД 0350166.');
     return;
   }
 
@@ -789,6 +848,7 @@ async function main() {
 
   await explode(orderLive.id, 2);
   await explode(orderLate.id, 1, [{ specItemId: shaft.id, count: 1 }]);
+  await ensureGanttDemoOrders(tenant.id);
   await ensurePartPlaceholders(tenant.id, tenant.code);
   await ensureKdSample(tenant.id, tenant.code);
 
