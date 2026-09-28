@@ -6,6 +6,7 @@ import {
 import { Prisma, Role, StaffKind } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuthUser } from '../auth/auth-user';
 import { CreateEmployeeDto, CreateUserDto, PatchEmployeeDto, PatchUserDto } from './dto';
 import { normalizeWeekDays, onShiftToday, parseAnchor, scheduleLabel } from './schedule';
 
@@ -21,7 +22,10 @@ export class IdentityService {
     });
   }
 
-  async createUser(tenantId: string, dto: CreateUserDto) {
+  async createUser(tenantId: string, actor: AuthUser, dto: CreateUserDto) {
+    if (dto.role === Role.SUPER && actor.role !== Role.SUPER) {
+      throw new BadRequestException('Назначить суперпользователя может только суперпользователь');
+    }
     const email = dto.email.trim().toLowerCase();
     const exists = await this.prisma.user.findFirst({ where: { tenantId, email } });
     if (exists) {
@@ -43,11 +47,40 @@ export class IdentityService {
     });
   }
 
-  async patchUser(tenantId: string, id: string, dto: PatchUserDto) {
+  async patchUser(tenantId: string, actor: AuthUser, id: string, dto: PatchUserDto) {
     const user = await this.prisma.user.findFirst({ where: { id, tenantId } });
     if (!user) throw new NotFoundException('Пользователь не найден');
+    if (dto.role === Role.SUPER && actor.role !== Role.SUPER) {
+      throw new BadRequestException('Назначить суперпользователя может только суперпользователь');
+    }
+    if (user.role === Role.SUPER && actor.role !== Role.SUPER) {
+      if (dto.role && dto.role !== Role.SUPER) {
+        throw new BadRequestException('Нельзя снять роль суперпользователя');
+      }
+      if (dto.isActive === false) {
+        throw new BadRequestException('Нельзя отключить суперпользователя');
+      }
+    }
+    const supers = await this.prisma.user.count({
+      where: { tenantId, role: Role.SUPER, isActive: true },
+    });
+    const lastSuper = user.role === Role.SUPER && user.isActive && supers <= 1;
+    if (lastSuper && dto.role && dto.role !== Role.SUPER) {
+      throw new BadRequestException('Нельзя снять последнего суперпользователя');
+    }
+    if (lastSuper && dto.isActive === false) {
+      throw new BadRequestException('Нельзя отключить последнего суперпользователя');
+    }
+    if (dto.email) {
+      const email = dto.email.trim().toLowerCase();
+      const clash = await this.prisma.user.findFirst({
+        where: { tenantId, email, NOT: { id } },
+      });
+      if (clash) throw new BadRequestException('Пользователь с такой почтой уже есть');
+    }
     const data: Prisma.UserUpdateInput = {};
     if (dto.fullName) data.fullName = dto.fullName.trim();
+    if (dto.email) data.email = dto.email.trim().toLowerCase();
     if (dto.role) data.role = dto.role;
     if (dto.isActive != null) data.isActive = dto.isActive;
     if (dto.password) data.passwordHash = await bcrypt.hash(dto.password, 10);

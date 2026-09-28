@@ -41,6 +41,10 @@ export class PatchUserDto {
   fullName?: string;
 
   @IsOptional()
+  @IsEmail({ require_tld: false })
+  email?: string;
+
+  @IsOptional()
   @IsEnum(Role)
   role?: Role;
 
@@ -49,6 +53,7 @@ export class PatchUserDto {
   isActive?: boolean;
 
   @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== undefined)
   @IsString()
   employeeId?: string | null;
 

@@ -46,6 +46,9 @@ export default function SpecsPage() {
         <PriorityInput value={priority} onChange={setPriority} />
         <button className="btn">Новая спецификация</button>
       </form>
+      <p className="muted" style={{ marginTop: -8, marginBottom: 16 }}>
+        Приоритет 1–100, больше — раньше в очереди.
+      </p>
       {error && <p className="err">{error}</p>}
       <table className="data">
         <thead>

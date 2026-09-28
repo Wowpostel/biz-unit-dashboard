@@ -5,6 +5,7 @@ import {
   CreateOperationTypeDto,
   CreatePostDto,
   PatchEquipmentDto,
+  PatchOperationTypeDto,
   PatchPostDto,
 } from './dto';
 
@@ -91,6 +92,12 @@ export class ShopService {
     const row = await this.prisma.equipment.findFirst({ where: { id, tenantId } });
     if (!row) throw new NotFoundException('Оборудование не найдено');
     if (dto.postId) await this.ensurePost(tenantId, dto.postId);
+    if (dto.code && dto.code.trim() !== row.code) {
+      const clash = await this.prisma.equipment.findFirst({
+        where: { tenantId, code: dto.code.trim(), NOT: { id } },
+      });
+      if (clash) throw new BadRequestException('Станок с таким кодом уже есть');
+    }
     return this.prisma.equipment.update({
       where: { id },
       data: {
@@ -120,6 +127,27 @@ export class ShopService {
         code: dto.code.trim(),
         name: dto.name.trim(),
         defaultPostId: dto.defaultPostId || null,
+      },
+      include: { defaultPost: true },
+    });
+  }
+
+  async patchOperationType(tenantId: string, id: string, dto: PatchOperationTypeDto) {
+    const row = await this.prisma.operationType.findFirst({ where: { id, tenantId } });
+    if (!row) throw new NotFoundException('Вид операции не найден');
+    if (dto.defaultPostId) await this.ensurePost(tenantId, dto.defaultPostId);
+    if (dto.code && dto.code.trim() !== row.code) {
+      const clash = await this.prisma.operationType.findFirst({
+        where: { tenantId, code: dto.code.trim(), NOT: { id } },
+      });
+      if (clash) throw new BadRequestException('Вид операции с таким кодом уже есть');
+    }
+    return this.prisma.operationType.update({
+      where: { id },
+      data: {
+        code: dto.code?.trim(),
+        name: dto.name?.trim(),
+        defaultPostId: dto.defaultPostId === undefined ? undefined : dto.defaultPostId || null,
       },
       include: { defaultPost: true },
     });

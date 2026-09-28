@@ -160,7 +160,7 @@ table.data tr.ok { background: #e7f4ea; }
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  align-items: flex-end;
+  align-items: center;
   margin-bottom: 16px;
 }
 .form-row label {
@@ -176,6 +176,31 @@ table.data tr.ok { background: #e7f4ea; }
   padding: 8px 10px;
   border: 1px solid var(--line);
   background: #fff;
+}
+.form-row > input,
+.form-row > select,
+.form-row > button {
+  height: 38px;
+  box-sizing: border-box;
+}
+.form-row > .prio-field,
+input.prio-field {
+  width: 7.25rem;
+  min-width: 7.25rem;
+  max-width: 7.25rem;
+  flex: 0 0 7.25rem;
+}
+.form-row > .qty-field {
+  width: 4.75rem;
+  min-width: 4.75rem;
+  max-width: 4.75rem;
+  flex: 0 0 4.75rem;
+}
+.row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  white-space: nowrap;
 }
 .indent { display: inline-block; width: 18px; }
 

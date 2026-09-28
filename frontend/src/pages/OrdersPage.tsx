@@ -86,16 +86,22 @@ export default function OrdersPage() {
           ))}
         </select>
         <input
+          className="qty-field"
           type="number"
           min={1}
           step={1}
           inputMode="numeric"
+          title="Количество"
+          aria-label="Количество"
           value={qty}
           onChange={(e) => setQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
         />
         <PriorityInput value={priority} onChange={setPriority} />
         <button className="btn">Создать заказ</button>
       </form>
+      <p className="muted" style={{ marginTop: -8, marginBottom: 16 }}>
+        Приоритет 1–100, больше — раньше в очереди.
+      </p>
       {error && <p className="err">{error}</p>}
       <table className="data">
         <thead>

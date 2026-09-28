@@ -9,6 +9,7 @@ import {
   CreateOperationTypeDto,
   CreatePostDto,
   PatchEquipmentDto,
+  PatchOperationTypeDto,
   PatchPostDto,
 } from './dto';
 
@@ -70,6 +71,16 @@ export class ShopController {
   @Post('operation-types')
   createType(@CurrentUser() user: AuthUser, @Body() dto: CreateOperationTypeDto) {
     return this.shop.createOperationType(user.tenantId, dto);
+  }
+
+  @Roles(Role.ADMIN, Role.TECHNOLOGIST)
+  @Patch('operation-types/:id')
+  patchType(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: PatchOperationTypeDto,
+  ) {
+    return this.shop.patchOperationType(user.tenantId, id, dto);
   }
 
   @Roles(Role.ADMIN, Role.TECHNOLOGIST)

@@ -25,7 +25,7 @@ export class IdentityController {
   @Roles(Role.ADMIN)
   @Post('users')
   createUser(@CurrentUser() user: AuthUser, @Body() dto: CreateUserDto) {
-    return this.identity.createUser(user.tenantId, dto);
+    return this.identity.createUser(user.tenantId, user, dto);
   }
 
   @Roles(Role.ADMIN)
@@ -35,7 +35,7 @@ export class IdentityController {
     @Param('id') id: string,
     @Body() dto: PatchUserDto,
   ) {
-    return this.identity.patchUser(user.tenantId, id, dto);
+    return this.identity.patchUser(user.tenantId, user, id, dto);
   }
 
   @Roles(Role.ADMIN, Role.TECHNOLOGIST, Role.DISPATCHER)

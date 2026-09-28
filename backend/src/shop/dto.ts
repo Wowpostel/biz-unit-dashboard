@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsOptional, IsString, ValidateIf } from 'class-validator';
 
 export class CreatePostDto {
   @IsString()
@@ -47,6 +47,21 @@ export class CreateOperationTypeDto {
   defaultPostId?: string | null;
 }
 
+export class PatchOperationTypeDto {
+  @IsOptional()
+  @IsString()
+  code?: string;
+
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== undefined)
+  @IsString()
+  defaultPostId?: string | null;
+}
+
 export class CreateEquipmentDto {
   @IsString()
   code!: string;
@@ -77,6 +92,7 @@ export class PatchEquipmentDto {
   inventoryNo?: string;
 
   @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== undefined)
   @IsString()
   postId?: string | null;
 

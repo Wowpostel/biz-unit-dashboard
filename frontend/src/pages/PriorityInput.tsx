@@ -10,19 +10,19 @@ export default function PriorityInput({
   disabled?: boolean;
 }) {
   return (
-    <label>
-      Приоритет
-      <input
-        type="number"
-        min={1}
-        max={100}
-        step={1}
-        inputMode="numeric"
-        disabled={disabled}
-        value={value}
-        onChange={(e) => onChange(clampPriority(Number(e.target.value) || PRIORITY_DEFAULT))}
-      />
-      <span className="muted">1–100, больше — раньше в очереди</span>
-    </label>
+    <input
+      className="prio-field"
+      type="number"
+      min={1}
+      max={100}
+      step={1}
+      inputMode="numeric"
+      disabled={disabled}
+      value={value}
+      placeholder="Приоритет"
+      title="Приоритет 1–100, больше — раньше в очереди"
+      aria-label="Приоритет"
+      onChange={(e) => onChange(clampPriority(Number(e.target.value) || PRIORITY_DEFAULT))}
+    />
   );
 }
