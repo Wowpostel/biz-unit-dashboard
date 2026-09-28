@@ -2,9 +2,12 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsEnum,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
+  Max,
+  Min,
   ValidateNested,
 } from 'class-validator';
 import { SpecItemKind } from '@prisma/client';
@@ -19,6 +22,13 @@ export class CreateSpecDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  priority?: number;
 }
 
 export class SpecItemInputDto {

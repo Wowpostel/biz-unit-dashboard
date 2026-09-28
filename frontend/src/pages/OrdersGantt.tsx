@@ -9,6 +9,7 @@ export type GanttOrder = {
   pct: number;
   lag: boolean;
   overdue: boolean;
+  priority?: number;
   specs?: string[];
 };
 
@@ -46,7 +47,12 @@ export default function OrdersGantt({ orders }: { orders: GanttOrder[] }) {
     return <p className="muted">Заказов нет — график появится, когда заведёте срок.</p>;
   }
 
-  const rows = [...orders].sort((a, b) => utcMs(a.createdAt) - utcMs(b.createdAt) || utcMs(a.dueDate) - utcMs(b.dueDate));
+  const rows = [...orders].sort(
+    (a, b) =>
+      (b.priority ?? 50) - (a.priority ?? 50) ||
+      utcMs(a.dueDate) - utcMs(b.dueDate) ||
+      utcMs(a.createdAt) - utcMs(b.createdAt),
+  );
 
   const today = dayStart(new Date());
   let min = today;
@@ -138,7 +144,7 @@ export default function OrdersGantt({ orders }: { orders: GanttOrder[] }) {
                 <Link className="gantt-label" to={`/office/orders/${o.id}`}>
                   <strong>{o.number}</strong>
                   <div className="muted">
-                    {o.pct}% · {statusRu[o.status] ?? o.status}
+                    P{o.priority ?? 50} · {o.pct}% · {statusRu[o.status] ?? o.status}
                     <br />
                     до {new Date(o.dueDate).toLocaleDateString('ru')}
                   </div>
@@ -155,7 +161,7 @@ export default function OrdersGantt({ orders }: { orders: GanttOrder[] }) {
                     to={`/office/orders/${o.id}`}
                     className={`gantt-bar ${cls}`}
                     style={{ left: left(start), width: width(start, due) }}
-                    title={`${o.number}: ${iso(start)} → ${iso(due)}, ${o.pct}%`}
+                    title={`${o.number}: P${o.priority ?? 50}, ${iso(start)} → ${iso(due)}, ${o.pct}%`}
                   >
                     <span className="gantt-fill" style={{ width: `${Math.min(100, o.pct)}%` }} />
                     <span className="gantt-bar-text">{o.number}</span>

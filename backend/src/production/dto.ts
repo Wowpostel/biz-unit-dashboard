@@ -6,6 +6,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -29,6 +30,13 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   comment?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  priority?: number;
 
   @IsArray()
   @ValidateNested({ each: true })
@@ -62,4 +70,17 @@ export class LaunchDto {
   @ValidateNested({ each: true })
   @Type(() => ExtraPieceDto)
   extraPieces?: ExtraPieceDto[];
+}
+
+export class PatchOrderDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  priority?: number;
+
+  @IsOptional()
+  @IsString()
+  comment?: string;
 }

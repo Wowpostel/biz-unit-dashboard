@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ProductionService } from '../production/production.service';
 import { PartImagesService } from '../engineering/part-images.service';
 import { hoursBetween, num } from '../common/util';
+import { compareQueueRow } from '../common/priority';
 import { ManualTimeDto, StartTimerDto, StopTimerDto } from './dto';
 
 @Injectable()
@@ -76,13 +77,22 @@ export class TerminalService {
         partName: op.workItem.specItem.name,
         photoUrl: photoOf(op.workItem.specItem.designation),
         orderNumber: op.workItem.order.number,
+        priority: op.workItem.order.priority,
+        dueDate: op.workItem.order.dueDate,
         postedHours: num(op.postedHours),
         timeNormHours: num(op.timeNormHours),
         activeStartAt: op.activeStartAt,
         operatorName: op.activeOperator?.fullName ?? null,
+        _sort: {
+          inWork: op.status === OperationStatus.IN_WORK,
+          priority: op.workItem.order.priority,
+          dueAt: op.workItem.order.dueDate.getTime(),
+          createdAt: op.workItem.createdAt.getTime(),
+        },
       });
     }
-    return ready;
+    ready.sort((a, b) => compareQueueRow(a._sort, b._sort));
+    return ready.map(({ _sort, ...row }) => row);
   }
 
   async myOpen(tenantId: string, userId: string) {

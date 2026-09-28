@@ -6,6 +6,7 @@ import {
 import { SpecItemKind } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { num } from '../common/util';
+import { clampPriority } from '../common/priority';
 import { PartImagesService } from './part-images.service';
 import {
   CreateSpecDto,
@@ -74,6 +75,7 @@ export class EngineeringService {
         code: dto.code.trim(),
         name: dto.name.trim(),
         description: dto.description?.trim() ?? '',
+        priority: clampPriority(dto.priority),
       },
     });
   }
@@ -86,6 +88,7 @@ export class EngineeringService {
         code: dto.code.trim(),
         name: dto.name.trim(),
         description: dto.description?.trim() ?? '',
+        ...(dto.priority !== undefined ? { priority: clampPriority(dto.priority) } : {}),
       },
     });
   }

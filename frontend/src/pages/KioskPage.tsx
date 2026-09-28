@@ -21,6 +21,7 @@ type QueueRow = {
   name: string;
   photoUrl?: string | null;
   orderNumber: string;
+  priority?: number;
   status: string;
   postedHours: number;
   operatorName: string | null;
@@ -33,6 +34,7 @@ type Scan = {
   specCode: string;
   specName: string;
   orderNumber: string;
+  priority?: number;
   dueDate: string | null;
   atThisPost: boolean;
   otherPostName: string | null;
@@ -302,7 +304,9 @@ export default function KioskPage() {
           </h2>
           <p>Наименование: {scan.name}</p>
           <p>
-            Заказ {scan.orderNumber} · {scan.specCode} {scan.specName} · QR {scan.qrCode}
+            Заказ {scan.orderNumber}
+            {scan.priority != null ? ` · приоритет ${scan.priority}` : ''} · {scan.specCode}{' '}
+            {scan.specName} · QR {scan.qrCode}
             {scan.dueDate ? ` · срок ${new Date(scan.dueDate).toLocaleDateString('ru')}` : ''}
           </p>
           {scan.otherPostName && (
@@ -406,6 +410,7 @@ export default function KioskPage() {
         </div>
         <div className="panel">
           <h3>На этом посту</h3>
+          <p className="muted">Сначала в работе, затем высокий приоритет, затем ближайший срок.</p>
           {queue
             .filter((q) => {
               const n = partNo.trim().toLowerCase();
@@ -433,7 +438,8 @@ export default function KioskPage() {
                   />
                 ) : null}
                 <span>
-                  Номер {q.designation} — {q.partName} ({q.orderNumber})
+                  Номер {q.designation} — {q.partName} ({q.orderNumber}
+                  {q.priority != null ? `, P${q.priority}` : ''})
                 </span>
               </button>
             </div>

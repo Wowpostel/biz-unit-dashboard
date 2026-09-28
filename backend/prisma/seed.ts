@@ -479,6 +479,23 @@ async function ensureGanttDemoOrders(tenantId: string) {
   });
 }
 
+async function ensurePriorities(tenantId: string) {
+  await prisma.spec.updateMany({
+    where: { tenantId, code: 'РЦ-12' },
+    data: { priority: 70 },
+  });
+  const ranks: [string, number][] = [
+    ['З-1000', 90],
+    ['З-1001', 60],
+    ['З-1002', 40],
+    ['З-1003', 20],
+    ['З-0999', 50],
+  ];
+  for (const [number, priority] of ranks) {
+    await prisma.order.updateMany({ where: { tenantId, number }, data: { priority } });
+  }
+}
+
 async function main() {
   const existing = await prisma.tenant.findUnique({ where: { code: 'pilot' } });
   if (existing) {
@@ -508,7 +525,8 @@ async function main() {
     await ensurePartPlaceholders(existing.id, existing.code);
     await ensureKdSample(existing.id, existing.code);
     await ensureGanttDemoOrders(existing.id);
-    console.log('Пилот уже заполнен, дописали график заказов, нач. цеха/мастеров, явку смены и фото КД 0350166.');
+    await ensurePriorities(existing.id);
+    console.log('Пилот уже заполнен, дописали приоритеты, график заказов, нач. цеха/мастеров, явку смены и фото КД 0350166.');
     return;
   }
 
@@ -575,6 +593,7 @@ async function main() {
       code: 'РЦ-12',
       name: 'Редуктор цилиндрический',
       description: 'Пилотная многоуровневая спецификация',
+      priority: 70,
     },
   });
 
@@ -747,6 +766,7 @@ async function main() {
       number: 'З-1001',
       dueDate: dueSoon,
       comment: 'Пилотный заказ на отладку контура',
+      priority: 60,
       lines: {
         create: { tenantId: tenant.id, specId: spec.id, qty: 2 },
       },
@@ -758,6 +778,7 @@ async function main() {
       number: 'З-1000',
       dueDate: dueYesterday,
       comment: 'Просроченный заказ для дашборда',
+      priority: 90,
       createdAt: new Date(Date.now() - 14 * 86400000),
       lines: {
         create: { tenantId: tenant.id, specId: spec.id, qty: 1 },
@@ -849,6 +870,7 @@ async function main() {
   await explode(orderLive.id, 2);
   await explode(orderLate.id, 1, [{ specItemId: shaft.id, count: 1 }]);
   await ensureGanttDemoOrders(tenant.id);
+  await ensurePriorities(tenant.id);
   await ensurePartPlaceholders(tenant.id, tenant.code);
   await ensureKdSample(tenant.id, tenant.code);
 

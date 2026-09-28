@@ -276,6 +276,8 @@ table.data tr.ok { background: #e7f4ea; }
 .tag.bad { border-color: var(--bad); color: var(--bad); }
 .tag.warn { border-color: var(--warn); color: var(--warn); }
 .tag.good { border-color: var(--good); color: var(--good); }
+.tag.prio { font-variant-numeric: tabular-nums; font-weight: 700; }
+.tag.prio.hot { border-color: var(--amber); color: var(--amber); }
 
 .paste-box {
   width: 100%;

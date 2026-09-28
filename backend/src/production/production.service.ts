@@ -6,8 +6,9 @@ import {
 import { OperationStatus, Prisma, SpecItemKind, WorkItemStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { makeQrCode, num } from '../common/util';
+import { clampPriority } from '../common/priority';
 import { PartImagesService } from '../engineering/part-images.service';
-import { CreateOrderDto, LaunchDto } from './dto';
+import { CreateOrderDto, LaunchDto, PatchOrderDto } from './dto';
 
 type ItemRow = {
   id: string;
@@ -35,7 +36,7 @@ export class ProductionService {
   async listOrders(tenantId: string) {
     const orders = await this.prisma.order.findMany({
       where: { tenantId },
-      orderBy: { dueDate: 'asc' },
+      orderBy: [{ priority: 'desc' }, { dueDate: 'asc' }],
       include: {
         lines: { include: { spec: true } },
         _count: { select: { workItems: true, launches: true } },
@@ -86,11 +87,13 @@ export class ProductionService {
     if (!dto.lines.length) {
       throw new BadRequestException('В заказе нужна хотя бы одна спецификация');
     }
+    let priority = dto.priority;
     for (const line of dto.lines) {
       const spec = await this.prisma.spec.findFirst({
         where: { id: line.specId, tenantId },
       });
       if (!spec) throw new BadRequestException('Спецификация не найдена');
+      if (priority == null) priority = spec.priority;
     }
     return this.prisma.order.create({
       data: {
@@ -98,6 +101,7 @@ export class ProductionService {
         number: dto.number.trim(),
         dueDate: new Date(dto.dueDate),
         comment: dto.comment?.trim() ?? '',
+        priority: clampPriority(priority),
         lines: {
           create: dto.lines.map((l) => ({
             tenantId,
@@ -105,6 +109,19 @@ export class ProductionService {
             qty: l.qty,
           })),
         },
+      },
+      include: { lines: { include: { spec: true } } },
+    });
+  }
+
+  async patchOrder(tenantId: string, id: string, dto: PatchOrderDto) {
+    const order = await this.prisma.order.findFirst({ where: { id, tenantId } });
+    if (!order) throw new NotFoundException('Заказ не найден');
+    return this.prisma.order.update({
+      where: { id },
+      data: {
+        ...(dto.priority !== undefined ? { priority: clampPriority(dto.priority) } : {}),
+        ...(dto.comment !== undefined ? { comment: dto.comment.trim() } : {}),
       },
       include: { lines: { include: { spec: true } } },
     });
@@ -365,7 +382,7 @@ export class ProductionService {
         kind: SpecItemKind;
         spec?: { code: string; name: string };
       };
-      order?: { number: string; dueDate: Date };
+      order?: { number: string; dueDate: Date; priority?: number };
       launch?: { qty: number; spec?: { code: string; name: string } };
       operations: {
         id: string;
@@ -405,6 +422,7 @@ export class ProductionService {
       specName: item.specItem.spec?.name ?? item.launch?.spec?.name ?? '',
       orderNumber: item.order?.number ?? '',
       dueDate: item.order?.dueDate ?? null,
+      priority: item.order?.priority ?? 50,
       currentOperation: current
         ? {
             id: current.id,

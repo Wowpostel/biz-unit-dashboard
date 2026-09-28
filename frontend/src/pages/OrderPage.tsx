@@ -2,6 +2,8 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, isSuper } from '../api';
 import { useAuth } from '../auth';
+import { PRIORITY_DEFAULT } from '../priority';
+import PriorityInput from './PriorityInput';
 
 type WorkItem = {
   id: string;
@@ -28,6 +30,7 @@ type Order = {
   dueDate: string;
   status: string;
   comment: string;
+  priority: number;
   lines: { specId: string; spec: { id: string; code: string; name: string }; qty: number }[];
   launches: Launch[];
   workItems: WorkItem[];
@@ -54,11 +57,14 @@ export default function OrderPage() {
   const [extraItem, setExtraItem] = useState('');
   const [extraCount, setExtraCount] = useState(1);
   const [items, setItems] = useState<SpecDetail['items']>([]);
+  const [priority, setPriority] = useState(PRIORITY_DEFAULT);
   const [error, setError] = useState('');
+  const [saved, setSaved] = useState('');
 
   async function load() {
     const o = await api<Order>(`/api/orders/${id}`);
     setOrder(o);
+    setPriority(o.priority ?? PRIORITY_DEFAULT);
     const first = o.lines[0]?.specId ?? '';
     setSpecId(first);
     if (first) {
@@ -71,6 +77,22 @@ export default function OrderPage() {
     load().catch((e) => setError(e.message));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  async function savePriority(e: FormEvent) {
+    e.preventDefault();
+    setError('');
+    setSaved('');
+    try {
+      await api(`/api/orders/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ priority }),
+      });
+      await load();
+      setSaved('Приоритет сохранён — очередь на постах пересчитается сразу.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка');
+    }
+  }
 
   async function launch(e: FormEvent) {
     e.preventDefault();
@@ -96,13 +118,30 @@ export default function OrderPage() {
         <div>
           <h1>Заказ {order.number}</h1>
           <p>
-            Срок {new Date(order.dueDate).toLocaleDateString('ru')} · {statusRu[order.status]}
+            Срок {new Date(order.dueDate).toLocaleDateString('ru')} · приоритет {order.priority} ·{' '}
+            {statusRu[order.status]}
           </p>
         </div>
         <Link to="/office/orders" className="btn ghost">
           К списку
         </Link>
       </div>
+
+      {canLaunch && (
+        <div className="card">
+          <h3>Приоритет в очереди</h3>
+          <p className="muted">
+            1–100, больше — раньше в постановке деталей на пост. Операции уже в работе остаются первыми,
+            остальные перестраиваются сразу после сохранения.
+          </p>
+          <form className="form-row" onSubmit={savePriority}>
+            <PriorityInput value={priority} onChange={setPriority} />
+            <button className="btn amber">Сохранить приоритет</button>
+          </form>
+          {saved && <p className="muted">{saved}</p>}
+          {error && <p className="err">{error}</p>}
+        </div>
+      )}
 
       <div className="card">
         <h3>Состав заказа</h3>

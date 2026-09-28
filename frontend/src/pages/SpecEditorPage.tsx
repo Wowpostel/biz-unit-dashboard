@@ -2,6 +2,8 @@ import { ClipboardEvent, KeyboardEvent, useEffect, useMemo, useState } from 'rea
 import { Link, useParams } from 'react-router-dom';
 import { api, isSuper } from '../api';
 import { useAuth } from '../auth';
+import { PRIORITY_DEFAULT } from '../priority';
+import PriorityInput from './PriorityInput';
 
 type Kind = 'ASSEMBLY' | 'PART' | 'MATERIAL';
 type TechSource = 'catalog' | 'kit' | 'own' | 'empty';
@@ -142,6 +144,7 @@ export default function SpecEditorPage() {
   const canEdit = isSuper(user?.role) || user?.role === 'ADMIN' || user?.role === 'TECHNOLOGIST';
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
+  const [priority, setPriority] = useState(PRIORITY_DEFAULT);
   const [rows, setRows] = useState<Row[]>([]);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState('');
@@ -163,6 +166,7 @@ export default function SpecEditorPage() {
       api<{
         code: string;
         name: string;
+        priority?: number;
         items: Parameters<typeof toRow>[0][];
       }>(`/api/specs/${id}`),
       api<OpType[]>('/api/operation-types'),
@@ -180,6 +184,7 @@ export default function SpecEditorPage() {
       .then(([spec, opTypes, photos]) => {
         setCode(spec.code);
         setName(spec.name);
+        setPriority(spec.priority ?? PRIORITY_DEFAULT);
         setRows(spec.items.map(toRow));
         setTypes(opTypes);
         if (photos.inbox) setInboxHint(photos.inbox);
@@ -441,7 +446,7 @@ export default function SpecEditorPage() {
     try {
       await api(`/api/specs/${id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ code, name }),
+        body: JSON.stringify({ code, name, priority }),
       });
       const spec = await api<{ items: Parameters<typeof toRow>[0][] }>(`/api/specs/${id}/items`, {
         method: 'PUT',
@@ -515,7 +520,8 @@ export default function SpecEditorPage() {
           <h1>Спецификация {code}</h1>
           <p>
             Вставьте столбец номеров из Excel — появятся строки. Номер и наименование — разные поля.
-            Если номер уже в базе, технология подтянется. Нормы минут копируются так же, как набор операций.{' '}
+            Если номер уже в базе, технология подтянется. Нормы минут копируются так же, как набор операций.
+            Приоритет 1–100 — значение по умолчанию для новых заказов (больше — раньше в очереди).{' '}
             <Link to={`/office/specs/${id}/tech`}>Текст и фото операций →</Link>
           </p>
         </div>
@@ -528,6 +534,7 @@ export default function SpecEditorPage() {
       <div className="form-row">
         <input value={code} onChange={(e) => setCode(e.target.value)} readOnly={!canEdit} />
         <input value={name} onChange={(e) => setName(e.target.value)} style={{ minWidth: 280 }} readOnly={!canEdit} />
+        <PriorityInput value={priority} onChange={setPriority} disabled={!canEdit} />
       </div>
 
       {canEdit && (

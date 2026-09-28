@@ -219,6 +219,7 @@ model Spec {
   code        String
   name        String
   description String   @default("")
+  priority    Int      @default(50)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -313,6 +314,7 @@ model Order {
   dueDate   DateTime
   status    OrderStatus @default(DRAFT)
   comment   String      @default("")
+  priority  Int         @default(50)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
@@ -321,6 +323,7 @@ model Order {
   workItems WorkItem[]
 
   @@unique([tenantId, number])
+  @@index([tenantId, priority])
 }
 
 model OrderLine {

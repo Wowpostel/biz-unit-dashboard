@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { OperationStatus, WorkItemStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { num } from '../common/util';
+import { compareQueueRow } from '../common/priority';
 import { ShiftBoardService } from './shift-board.service';
 
 @Injectable()
@@ -19,7 +20,7 @@ export class DispatchService {
         lines: { include: { spec: true } },
         workItems: { include: { operations: true } },
       },
-      orderBy: { dueDate: 'asc' },
+      orderBy: [{ priority: 'desc' }, { dueDate: 'asc' }],
     });
 
     const orderRows = orders.map((order) => {
@@ -47,6 +48,7 @@ export class DispatchService {
         dueDate: order.dueDate,
         status: order.status,
         comment: order.comment,
+        priority: order.priority,
         specs: order.lines.map((l) => `${l.spec.code} × ${num(l.qty)}`),
         totalOps: total,
         doneOps: done,
@@ -85,8 +87,11 @@ export class DispatchService {
           operation: string;
           status: OperationStatus;
           orderNumber: string;
+          priority: number;
           operatorName: string | null;
           activeStartAt: Date | null;
+          dueAt: number;
+          createdAt: number;
         }[];
       }
     >();
@@ -114,10 +119,33 @@ export class DispatchService {
         operation: op.name,
         status: op.status,
         orderNumber: op.workItem.order.number,
+        priority: op.workItem.order.priority,
         operatorName: op.activeOperator?.fullName ?? null,
         activeStartAt: op.activeStartAt,
+        dueAt: op.workItem.order.dueDate.getTime(),
+        createdAt: op.workItem.createdAt.getTime(),
       });
     }
+
+    const onMachines = [...byPost.values()].map((p) => ({
+      ...p,
+      items: [...p.items].sort((a, b) =>
+        compareQueueRow(
+          {
+            inWork: a.status === OperationStatus.IN_WORK,
+            priority: a.priority,
+            dueAt: a.dueAt,
+            createdAt: a.createdAt,
+          },
+          {
+            inWork: b.status === OperationStatus.IN_WORK,
+            priority: b.priority,
+            dueAt: b.dueAt,
+            createdAt: b.createdAt,
+          },
+        ),
+      ).map(({ dueAt, createdAt, ...item }) => item),
+    }));
 
     const overdueItems = await this.prisma.workItem.findMany({
       where: {
@@ -138,7 +166,7 @@ export class DispatchService {
     return {
       generatedAt: now,
       orders: orderRows,
-      onMachines: [...byPost.values()],
+      onMachines,
       overdue: overdueItems.map((w) => {
         const current = w.operations.sort((a, b) => a.seq - b.seq)[0];
         return {
@@ -147,6 +175,7 @@ export class DispatchService {
           designation: w.specItem.designation,
           name: w.specItem.name,
           orderNumber: w.order.number,
+          priority: w.order.priority,
           dueDate: w.order.dueDate,
           currentOp: current?.name ?? null,
           postName: current?.post?.name ?? null,

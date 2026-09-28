@@ -12,6 +12,7 @@ type Overview = {
     dueDate: string;
     status: string;
     specs: string[];
+    priority: number;
     pct: number;
     expectedPct: number;
     lag: boolean;
@@ -29,6 +30,7 @@ type Overview = {
       operation: string;
       status: string;
       orderNumber: string;
+      priority: number;
       operatorName: string | null;
     }[];
   }[];
@@ -75,7 +77,10 @@ export default function DashboardPage() {
       <div className="page-h">
         <div>
           <h1>Диспетчер</h1>
-          <p>Своевременность заказов, график-таймлайн, явка смены, что сейчас на станках, просрочка.</p>
+          <p>
+            Своевременность заказов, график-таймлайн, явка смены, что сейчас на станках, просрочка.
+            Приоритет 1–100: больше — раньше в очереди поста.
+          </p>
         </div>
       </div>
       <div className="grid-3">
@@ -122,6 +127,7 @@ export default function DashboardPage() {
           <thead>
             <tr>
               <th>Номер</th>
+              <th>Приоритет</th>
               <th>Срок</th>
               <th>Состав</th>
               <th>Готовность</th>
@@ -134,6 +140,9 @@ export default function DashboardPage() {
               <tr key={o.id} className={o.overdue ? 'overdue' : o.lag ? 'lag' : ''}>
                 <td>
                   <Link to={`/office/orders/${o.id}`}>{o.number}</Link>
+                </td>
+                <td>
+                  <span className={o.priority >= 80 ? 'tag prio hot' : 'tag prio'}>{o.priority}</span>
                 </td>
                 <td>{new Date(o.dueDate).toLocaleDateString('ru')}</td>
                 <td>{o.specs.join(', ')}</td>
@@ -168,7 +177,12 @@ export default function DashboardPage() {
                         </div>
                       </td>
                       <td>{it.operation}</td>
-                      <td>{it.orderNumber}</td>
+                      <td>
+                        {it.orderNumber}{' '}
+                        <span className={it.priority >= 80 ? 'tag prio hot' : 'tag prio'}>
+                          {it.priority}
+                        </span>
+                      </td>
                       <td>{it.status === 'IN_WORK' ? it.operatorName ?? 'в работе' : 'ожидает'}</td>
                     </tr>
                   ))}
