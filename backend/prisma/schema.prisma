@@ -245,6 +245,7 @@ model SpecItem {
   qty         Decimal      @default(1) @db.Decimal(12, 3)
   unit        String       @default("шт")
   kind        SpecItemKind @default(PART)
+  priority    Int          @default(50)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 

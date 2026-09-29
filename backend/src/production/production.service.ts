@@ -380,6 +380,7 @@ export class ProductionService {
         designation: string;
         name: string;
         kind: SpecItemKind;
+        priority?: number;
         spec?: { code: string; name: string };
       };
       order?: { number: string; dueDate: Date; priority?: number };
@@ -423,6 +424,7 @@ export class ProductionService {
       orderNumber: item.order?.number ?? '',
       dueDate: item.order?.dueDate ?? null,
       priority: item.order?.priority ?? 50,
+      itemPriority: item.specItem.priority ?? 50,
       currentOperation: current
         ? {
             id: current.id,

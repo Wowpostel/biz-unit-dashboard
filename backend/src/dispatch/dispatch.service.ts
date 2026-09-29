@@ -88,6 +88,7 @@ export class DispatchService {
           status: OperationStatus;
           orderNumber: string;
           priority: number;
+          itemPriority: number;
           operatorName: string | null;
           activeStartAt: Date | null;
           dueAt: number;
@@ -120,6 +121,7 @@ export class DispatchService {
         status: op.status,
         orderNumber: op.workItem.order.number,
         priority: op.workItem.order.priority,
+        itemPriority: op.workItem.specItem.priority,
         operatorName: op.activeOperator?.fullName ?? null,
         activeStartAt: op.activeStartAt,
         dueAt: op.workItem.order.dueDate.getTime(),
@@ -134,12 +136,14 @@ export class DispatchService {
           {
             inWork: a.status === OperationStatus.IN_WORK,
             priority: a.priority,
+            itemPriority: a.itemPriority,
             dueAt: a.dueAt,
             createdAt: a.createdAt,
           },
           {
             inWork: b.status === OperationStatus.IN_WORK,
             priority: b.priority,
+            itemPriority: b.itemPriority,
             dueAt: b.dueAt,
             createdAt: b.createdAt,
           },

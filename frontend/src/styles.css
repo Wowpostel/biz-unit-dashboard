@@ -190,6 +190,23 @@ input.prio-field {
   max-width: 7.25rem;
   flex: 0 0 7.25rem;
 }
+.form-row label.prio-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  margin: 0;
+  white-space: nowrap;
+}
+.form-row label.prio-inline input.prio-field {
+  height: 38px;
+  min-width: 7.25rem;
+}
+table.data input.prio-field {
+  width: 4.5rem;
+  min-width: 4.5rem;
+  max-width: 4.5rem;
+}
 .form-row > .qty-field {
   width: 4.75rem;
   min-width: 4.75rem;

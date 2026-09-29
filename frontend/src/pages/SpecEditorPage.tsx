@@ -2,7 +2,7 @@ import { ClipboardEvent, KeyboardEvent, useEffect, useMemo, useState } from 'rea
 import { Link, useParams } from 'react-router-dom';
 import { api, isSuper } from '../api';
 import { useAuth } from '../auth';
-import { PRIORITY_DEFAULT } from '../priority';
+import { PRIORITY_DEFAULT, clampPriority } from '../priority';
 import PriorityInput from './PriorityInput';
 
 type Kind = 'ASSEMBLY' | 'PART' | 'MATERIAL';
@@ -28,6 +28,7 @@ type Row = {
   qty: number;
   unit: string;
   kind: Kind;
+  priority: number;
   operations: OpDraft[];
   techSource: TechSource;
   picked: boolean;
@@ -103,6 +104,7 @@ function toRow(it: {
   qty: number;
   unit: string;
   kind: Kind;
+  priority?: number;
   photoUrl?: string | null;
   operations?: OpDraft[];
 }): Row {
@@ -125,6 +127,7 @@ function toRow(it: {
     qty: it.qty,
     unit: it.unit,
     kind: it.kind,
+    priority: it.priority ?? PRIORITY_DEFAULT,
     operations: ops,
     techSource: ops.length ? 'own' : 'empty',
     picked: false,
@@ -234,6 +237,7 @@ export default function SpecEditorPage() {
       qty: 1,
       unit: 'шт',
       kind: 'PART',
+      priority,
       operations: [],
       techSource: 'empty',
       picked: true,
@@ -297,6 +301,7 @@ export default function SpecEditorPage() {
       qty: 1,
       unit: 'шт',
       kind: 'PART',
+      priority,
       operations: [],
       techSource: 'empty',
       picked: true,
@@ -461,6 +466,7 @@ export default function SpecEditorPage() {
             qty: Number(r.qty) || 1,
             unit: r.unit || 'шт',
             kind: r.kind,
+            priority: clampPriority(r.priority),
             operations:
               r.kind === 'MATERIAL'
                 ? undefined
@@ -521,7 +527,7 @@ export default function SpecEditorPage() {
           <p>
             Вставьте столбец номеров из Excel — появятся строки. Номер и наименование — разные поля.
             Если номер уже в базе, технология подтянется. Нормы минут копируются так же, как набор операций.
-            Приоритет 1–100 — значение по умолчанию для новых заказов (больше — раньше в очереди).{' '}
+            Приоритет 1–100 — у спецификации и у каждой детали в составе (больше — раньше в очереди).{' '}
             <Link to={`/office/specs/${id}/tech`}>Текст и фото операций →</Link>
           </p>
         </div>
@@ -534,7 +540,7 @@ export default function SpecEditorPage() {
       <div className="form-row">
         <input value={code} onChange={(e) => setCode(e.target.value)} readOnly={!canEdit} />
         <input value={name} onChange={(e) => setName(e.target.value)} style={{ minWidth: 280 }} readOnly={!canEdit} />
-        <PriorityInput value={priority} onChange={setPriority} disabled={!canEdit} />
+        <PriorityInput value={priority} onChange={setPriority} disabled={!canEdit} labeled />
       </div>
 
       {canEdit && (
@@ -671,6 +677,7 @@ export default function SpecEditorPage() {
             <th>Номер</th>
             <th>Наименование</th>
             <th style={{ width: 70 }}>Кол-во</th>
+            <th style={{ width: 72 }}>Приоритет</th>
             <th style={{ width: 60 }}>Ед.</th>
             <th style={{ width: 110 }}>Вид</th>
             <th>Операции</th>
@@ -739,6 +746,20 @@ export default function SpecEditorPage() {
                       const n = parseInt(e.target.value, 10);
                       patch(r.clientId, { qty: Number.isFinite(n) ? Math.max(1, n) : 1 });
                     }}
+                    readOnly={!canEdit}
+                  />
+                </td>
+                <td>
+                  <input
+                    className="prio-field"
+                    type="number"
+                    min={1}
+                    max={100}
+                    step={1}
+                    inputMode="numeric"
+                    title="Приоритет 1–100, больше — раньше в очереди"
+                    value={r.priority ?? PRIORITY_DEFAULT}
+                    onChange={(e) => patch(r.clientId, { priority: clampPriority(Number(e.target.value)) })}
                     readOnly={!canEdit}
                   />
                 </td>

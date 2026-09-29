@@ -494,6 +494,25 @@ async function ensurePriorities(tenantId: string) {
   for (const [number, priority] of ranks) {
     await prisma.order.updateMany({ where: { tenantId, number }, data: { priority } });
   }
+  const spec = await prisma.spec.findFirst({ where: { tenantId, code: 'РЦ-12' } });
+  if (spec) {
+    await prisma.specItem.updateMany({
+      where: { tenantId, specId: spec.id },
+      data: { priority: 70 },
+    });
+    const partRanks: [string, number][] = [
+      ['Д-10', 90],
+      ['0350166', 80],
+      ['Д-01', 60],
+      ['Д-02', 50],
+    ];
+    for (const [designation, priority] of partRanks) {
+      await prisma.specItem.updateMany({
+        where: { tenantId, specId: spec.id, designation },
+        data: { priority },
+      });
+    }
+  }
 }
 
 async function main() {

@@ -4,12 +4,14 @@ export default function PriorityInput({
   value,
   onChange,
   disabled,
+  labeled,
 }: {
   value: number;
   onChange: (n: number) => void;
   disabled?: boolean;
+  labeled?: boolean;
 }) {
-  return (
+  const input = (
     <input
       className="prio-field"
       type="number"
@@ -25,4 +27,6 @@ export default function PriorityInput({
       onChange={(e) => onChange(clampPriority(Number(e.target.value) || PRIORITY_DEFAULT))}
     />
   );
+  if (!labeled) return input;
+  return <label className="prio-inline">Приоритет{input}</label>;
 }

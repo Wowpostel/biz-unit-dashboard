@@ -78,6 +78,7 @@ export class TerminalService {
         photoUrl: photoOf(op.workItem.specItem.designation),
         orderNumber: op.workItem.order.number,
         priority: op.workItem.order.priority,
+        itemPriority: op.workItem.specItem.priority,
         dueDate: op.workItem.order.dueDate,
         postedHours: num(op.postedHours),
         timeNormHours: num(op.timeNormHours),
@@ -86,6 +87,7 @@ export class TerminalService {
         _sort: {
           inWork: op.status === OperationStatus.IN_WORK,
           priority: op.workItem.order.priority,
+          itemPriority: op.workItem.specItem.priority,
           dueAt: op.workItem.order.dueDate.getTime(),
           createdAt: op.workItem.createdAt.getTime(),
         },

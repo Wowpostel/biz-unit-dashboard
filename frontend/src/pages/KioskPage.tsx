@@ -22,6 +22,7 @@ type QueueRow = {
   photoUrl?: string | null;
   orderNumber: string;
   priority?: number;
+  itemPriority?: number;
   status: string;
   postedHours: number;
   operatorName: string | null;
@@ -439,7 +440,8 @@ export default function KioskPage() {
                 ) : null}
                 <span>
                   Номер {q.designation} — {q.partName} ({q.orderNumber}
-                  {q.priority != null ? `, P${q.priority}` : ''})
+                  {q.priority != null ? `, P${q.priority}` : ''}
+                  {q.itemPriority != null ? ` · дет. ${q.itemPriority}` : ''})
                 </span>
               </button>
             </div>

@@ -130,6 +130,7 @@ export class EngineeringService {
             unit: item.unit?.trim() || 'шт',
             kind,
             sortOrder: item.sortOrder,
+            priority: clampPriority(item.priority),
             parentId: null,
           },
         });
@@ -145,6 +146,7 @@ export class EngineeringService {
             unit: item.unit?.trim() || 'шт',
             kind,
             sortOrder: item.sortOrder,
+            priority: clampPriority(item.priority),
           },
         });
         clientToId.set(item.clientId, created.id);
